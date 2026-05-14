@@ -2,11 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
-from ..database import get_db
-from ..models import Doctor
-from ..schemas import DoctorLogin, Token, DoctorResponse, DoctorCreate
-from ..core.security import verify_password, get_password_hash, create_access_token, create_refresh_token, verify_token
-from ..core.config import settings
+from app.database import get_db
+from app.models import Doctor
+from app.schemas import DoctorLogin, Token, DoctorResponse, DoctorCreate
+from app.core.security import verify_password, get_password_hash, create_access_token, create_refresh_token, verify_token
+from app.core.config import settings
+from app.api.deps import get_current_doctor
 
 router = APIRouter()
 
@@ -52,5 +53,5 @@ async def refresh_token(refresh_token: str):
 
 
 @router.get("/me", response_model=DoctorResponse)
-async def get_me(doctor: Doctor = Depends(__import__("..api.deps", fromlist=["get_current_doctor"]).get_current_doctor)):
+async def get_me(doctor: Doctor = Depends(get_current_doctor)):
     return doctor

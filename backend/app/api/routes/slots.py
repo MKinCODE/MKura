@@ -4,13 +4,13 @@ from sqlalchemy import select, and_
 from typing import List, Optional
 from datetime import datetime, date
 
-from ..database import get_db
-from ..models import Slot, Booking, SlotStatus, BookingStatus, PaymentStatus, Doctor
-from ..schemas import SlotResponse, BookingCreate, BookingResponse, BlockSlotRequest
-from ..services.slot_service import get_or_generate_slots, find_earliest_available_slot, block_slot_with_reassignment
-from ..services.email_service import send_email, get_booking_confirmation_html, get_reschedule_notification_html
-from ..core.config import settings
-from .deps import get_current_doctor
+from app.database import get_db
+from app.models import Slot, Booking, SlotStatus, BookingStatus, PaymentStatus, Doctor
+from app.schemas import SlotResponse, BookingCreate, BookingResponse, BlockSlotRequest
+from app.services.slot_service import get_or_generate_slots, find_earliest_available_slot, block_slot_with_reassignment
+from app.services.email_service import send_email, get_booking_confirmation_html, get_reschedule_notification_html
+from app.core.config import settings
+from app.api.deps import get_current_doctor
 
 router = APIRouter()
 

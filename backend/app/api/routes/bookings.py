@@ -5,15 +5,15 @@ from typing import List, Optional
 from datetime import datetime, timedelta
 import secrets
 
-from ..database import get_db
-from ..models import Slot, Booking, Doctor, SlotStatus, BookingStatus, PaymentStatus
-from ..schemas import BookingResponse, CancellationConfirm
-from ..services.email_service import send_email, get_booking_confirmation_html, get_cancellation_confirmed_html
-from ..services.payment_service import create_payment_intent, refund_payment
-from ..services.slot_service import find_earliest_available_slot
-from ..agents.upgradation_agent import offer_slot_to_waitlist
-from ..core.config import settings
-from .deps import get_current_doctor
+from app.database import get_db
+from app.models import Slot, Booking, Doctor, SlotStatus, BookingStatus, PaymentStatus
+from app.schemas import BookingResponse, CancellationConfirm
+from app.services.email_service import send_email, get_booking_confirmation_html, get_cancellation_confirmed_html
+from app.services.payment_service import create_payment_intent, refund_payment
+from app.services.slot_service import find_earliest_available_slot
+from app.agents.upgradation_agent import offer_slot_to_waitlist
+from app.core.config import settings
+from app.api.deps import get_current_doctor
 
 router = APIRouter()
 

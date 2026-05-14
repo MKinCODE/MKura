@@ -4,9 +4,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import Optional
 
-from ..database import get_db
-from ..models import Doctor
-from ..core.security import verify_token
+from app.database import get_db
+from app.models import Doctor
+from app.core.security import verify_token
 
 security = HTTPBearer()
 

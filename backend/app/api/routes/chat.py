@@ -3,14 +3,14 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 from typing import Optional, List
 
-from ..database import get_db
-from ..models import Slot, Doctor
-from ..schemas import ChatMessage, ChatResponse
-from ..services.slot_service import find_earliest_available_slot
-from ..agents.booking_agent import booking_agent_service
-from ..core.rate_limit import check_rate_limit
-from ..core.config import settings
-from .deps import get_current_doctor
+from app.database import get_db
+from app.models import Slot, Doctor
+from app.schemas import ChatMessage, ChatResponse
+from app.services.slot_service import find_earliest_available_slot
+from app.agents.booking_agent import booking_agent_service
+from app.core.rate_limit import check_rate_limit
+from app.core.config import settings
+from app.api.deps import get_current_doctor
 
 router = APIRouter()
 
