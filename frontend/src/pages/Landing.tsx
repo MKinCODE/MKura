@@ -12,7 +12,7 @@ const testimonials = [
 
 const faqs = [
   { question: 'How do I book an appointment?', answer: 'Click the chat button at the bottom-right. MKura, our AI assistant, will guide you through booking in under 2 minutes — just share your name, contact details, and preferred time.' },
-  { question: 'What payment methods are accepted?', answer: 'We accept all major credit/debit cards via Stripe. A refundable ₹100 deposit confirms your booking.' },
+  { question: 'What payment methods are accepted?', answer: 'A refundable ₹100 deposit confirms your booking. (Currently in demo mode, no real charges are made.)' },
   { question: 'How do I cancel my appointment?', answer: "You'll receive a confirmation email with a cancellation link. Click it and confirm — your ₹100 deposit is refunded automatically." },
   { question: 'What is the waitlist?', answer: "If your preferred slot is full, join the waitlist. When a cancellation occurs, you'll get a 15-minute window to claim the freed slot." },
   { question: 'What are the clinic hours?', answer: 'Monday to Saturday, 9:00 AM – 6:00 PM. Closed on Sundays and public holidays.' },

@@ -1,33 +1,18 @@
-import stripe
 from typing import Optional
-from ..core.config import settings
-
-stripe.api_key = settings.STRIPE_SECRET_KEY
-
+import uuid
 
 def create_payment_intent(amount: int = None, currency: str = "inr") -> tuple[str, str]:
-    if amount is None:
-        amount = settings.PAYMENT_AMOUNT_INR * 100  # ₹1 = 100 paise
-
-    intent = stripe.PaymentIntent.create(
-        amount=amount,
-        currency=currency,
-        automatic_payment_methods={"enabled": True},
-        metadata={
-            "demo": "true",
-            "environment": "test",
-            "note": "Demo/test payment - no real charges",
-        },
-    )
-    return intent.client_secret, intent.id
+    # Mocking payment intent for demo
+    client_secret = f"pi_mock_secret_{uuid.uuid4()}"
+    payment_intent_id = f"pi_mock_{uuid.uuid4()}"
+    return client_secret, payment_intent_id
 
 
-def verify_webhook_signature(payload: bytes, sig_header: str) -> stripe.Event:
-    return stripe.Webhook.construct_event(
-        payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
-    )
+def verify_webhook_signature(payload: bytes, sig_header: str) -> dict:
+    # Mock webhook verify
+    return {}
 
 
-def refund_payment(payment_intent_id: str) -> stripe.Refund:
-    refund = stripe.Refund.create(payment_intent=payment_intent_id)
-    return refund
+def refund_payment(payment_intent_id: str) -> None:
+    # Mock refund
+    pass

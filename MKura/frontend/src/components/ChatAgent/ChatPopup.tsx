@@ -14,7 +14,7 @@ export default function ChatPopup() {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: "Welcome to MK Health Clinic! I'm MKura, your healthcare scheduling assistant. I'm here to help you book an appointment. What's your name?",
+      content: "Welcome to MK Health Clinic! I'm MKura, your scheduling assistant. I'm here to help you book an appointment. What's your name?",
     },
   ])
   const [input, setInput] = useState('')
@@ -59,35 +59,22 @@ export default function ChatPopup() {
       }
 
       if (action === 'complete' && data) {
-        // Booking is already created by PaymentModal, we don't need to create it again here.
-        // The backend handles the state transition to WAITLIST_PROMPT and COMPLETE.
+        const slotResponse = await chatApi.getEarliestSlot()
+        const slot = slotResponse.data
+
+        await bookingApi.createBooking({
+          slot_id: slot.id,
+          patient_name: data.patient_name,
+          patient_email: data.patient_email,
+          patient_phone: data.patient_phone,
+          wants_waitlist: data.wants_waitlist,
+        })
       }
     } catch (error) {
       setMessages((prev) => [
         ...prev,
         { role: 'assistant', content: 'Sorry, something went wrong. Please try again.' },
       ])
-    } finally {
-      setIsLoading(false)
-    }
-  }
-
-  const handleSendSystemMessage = async (sysMsg: string) => {
-    if (isLoading) return
-    setIsLoading(true)
-
-    try {
-      const response = await chatApi.sendMessage(sysMsg, sessionId || undefined)
-      const { response: botResponse, session_id, action, data } = response.data
-
-      if (!sessionId) setSessionId(session_id)
-      setMessages((prev) => [...prev, { role: 'assistant', content: botResponse }])
-
-      if (action === 'complete' && data) {
-        // Complete stage handled by the backend
-      }
-    } catch (error) {
-      console.error(error)
     } finally {
       setIsLoading(false)
     }
@@ -228,10 +215,6 @@ export default function ChatPopup() {
           onClose={() => setShowPayment(false)}
           bookingData={bookingData}
           sessionId={sessionId || ''}
-          onPaymentComplete={() => {
-            setShowPayment(false)
-            handleSendSystemMessage('payment_success')
-          }}
         />
       )}
     </>

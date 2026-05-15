@@ -18,10 +18,7 @@ class Settings(BaseSettings):
 
     GROQ_API_KEY: str = ""
 
-    STRIPE_SECRET_KEY: str = "sk_test_your_stripe_test_key"
-    STRIPE_PUBLISHABLE_KEY: str = "pk_test_your_stripe_test_key"
-    STRIPE_WEBHOOK_SECRET: str = "whsec_your_webhook_secret"
-    PAYMENT_AMOUNT_INR: int = 1
+    PAYMENT_AMOUNT_INR: int = 100
     DEMO_MODE: bool = True
 
     SMTP_HOST: str = "smtp.gmail.com"

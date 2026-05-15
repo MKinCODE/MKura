@@ -81,7 +81,7 @@ class BookingAgentService:
             return self._handle_waitlist_prompt(agent, message)
 
         if agent.stage == BookingStage.PAYMENT:
-            if payment_status == "success":
+            if payment_status == "success" or message.lower() == "payment_success":
                 return self._handle_payment_success(agent)
             return {"response": "Please complete the payment to confirm your booking.", "session_id": agent.session_id, "stage": agent.stage.value}
 
@@ -138,7 +138,7 @@ class BookingAgentService:
             agent.stage = BookingStage.PAYMENT
             agent.context["confirmed_slot"] = True
             response = (
-                "To confirm your booking, a refundable deposit of ₹1 is required.\n\n"
+                "To confirm your booking, a refundable deposit of ₹100 is required.\n\n"
                 "🧪 *Demo/Test Payment – No real charges are made.*\n\n"
                 "You'll be redirected to complete payment."
             )
@@ -152,6 +152,7 @@ class BookingAgentService:
                     "patient_name": agent.data.name,
                     "patient_email": agent.data.email,
                     "patient_phone": agent.data.phone,
+                    "slot_id": agent.data.confirmed_slot_id,
                 },
             }
 
@@ -208,7 +209,7 @@ class BookingAgentService:
         agent.add_message("assistant", response)
         return {"response": response, "session_id": agent.session_id, "stage": agent.stage.value}
 
-    def set_slot_info(agent: BookingAgent, slot_info: Dict[str, Any]):
+    def set_slot_info(self, agent: BookingAgent, slot_info: Dict[str, Any]):
         agent.data.selected_slot_info = slot_info
         agent.data.confirmed_slot_id = slot_info.get("id")
 

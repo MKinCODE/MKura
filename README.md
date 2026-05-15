@@ -8,7 +8,7 @@ A production-ready, AI-driven clinic booking system built for **MK Health Clinic
 - **AI Chat Agent**: Natural conversation to collect patient details (name, email, phone)
 - **Earliest Slot Booking**: Automatically finds the earliest available appointment
 - **Smart Lead Time**: 1-hour minimum booking window ensures patients can reach the clinic
-- **Payment Integration**: Stripe test mode for ₹100 refundable deposit
+- **Payment Integration**: Simulated payment flow for ₹100 demo deposit (no real gateway needed)
 - **Email Notifications**: Confirmation, reminders, and cancellation emails
 - **Cancellation Portal**: Token-based secure cancellation with instant email confirmation
 
@@ -33,7 +33,7 @@ A production-ready, AI-driven clinic booking system built for **MK Health Clinic
 | Cache/Queue | Redis 7 |
 | AI/NLP | Custom entity extraction + Groq API (LLM) |
 | Email | SMTP (aiosmtplib) |
-| Payment | Stripe Test Mode |
+| Payment | Simulated Demo Payment |
 | Auth | JWT (Access + Refresh tokens) |
 
 ## Project Structure
@@ -102,11 +102,6 @@ SECRET_KEY=your-super-secret-key-minimum-32-characters
 # Groq AI (get free API key from https://console.groq.com)
 GROQ_API_KEY=your_groq_api_key
 
-# Stripe (get test keys from https://dashboard.stripe.com/test/apikeys)
-STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key
-STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key
-STRIPE_WEBHOOK_SECRET=whsec_your_webhook_secret
-
 # Email (use Gmail App Password or other SMTP provider)
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
@@ -138,10 +133,8 @@ The application will be available at:
 - Email: `dr.mehta@mkhealth.com`
 - Password: `doctor123`
 
-**Stripe Test Card:**
-- Number: `4242 4242 4242 4242`
-- Expiry: Any future date
-- CVC: Any 3 digits
+**Simulated Payment:**
+- Simply click "Pay ₹100" in the demo payment modal to proceed automatically.
 
 ## Manual Development Setup
 
@@ -198,11 +191,6 @@ npm run dev
 1. Create a new Railway project
 2. Deploy from GitHub (frontend folder)
 3. Set environment variable: `VITE_API_URL=https://your-backend-url.railway.app`
-
-**Stripe Webhook (for production):**
-```bash
-stripe listen --forward-to localhost:8000/api/webhooks/stripe
-```
 
 ### Option 2: Render
 
@@ -268,15 +256,6 @@ server {
 ```
 
 ## Required Services Setup
-
-### Stripe Setup
-1. Create account at https://stripe.com
-2. Get API keys from Developers > API keys
-3. For webhooks, use Stripe CLI:
-   ```bash
-   stripe login
-   stripe listen --forward-to localhost:8000/api/webhooks/stripe
-   ```
 
 ### Groq AI Setup
 1. Sign up at https://console.groq.com
@@ -357,11 +336,6 @@ docker-compose exec backend python -m app.seed_data
 1. Verify SMTP credentials
 2. Check if less secure app access is enabled (for Gmail)
 3. Use app password instead of regular password (Gmail)
-
-### Stripe Payment Issues
-1. Verify test mode keys are used (not live keys)
-2. Check Stripe webhook is configured
-3. Check browser console for CORS errors
 
 ## Future Enhancements
 
