@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MapPin, Phone, Mail, Clock, Award, Shield, ChevronDown, Star, ArrowRight, MessageCircle, ChevronLeft, ChevronRight } from 'lucide-react'
+import { MapPin, Phone, Mail, Clock, Award, Shield, ChevronDown, Star, ArrowRight, MessageCircle } from 'lucide-react'
 
 const testimonials = [
   { name: 'Priya Sharma', location: 'Jaipur', text: 'Dr. Mehta is very thorough. The AI booking was so convenient!', rating: 5 },

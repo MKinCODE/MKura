@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, MessageCircle, Send, Bot, User, Loader2 } from 'lucide-react'
-import { chatApi, bookingApi } from '../../services/api'
+import { chatApi } from '../../services/api'
 import { PaymentModal } from './PaymentModal'
 
 interface Message {
