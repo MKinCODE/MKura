@@ -39,97 +39,63 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
 }
 
 function TestimonialCarousel() {
-  const [activeIndex, setActiveIndex] = useState(0)
   const [isHovered, setIsHovered] = useState(false)
-
-  useEffect(() => {
-    if (isHovered) return
-    const timer = setInterval(() => {
-      setActiveIndex((current) => (current + 1) % testimonials.length)
-    }, 4000)
-    return () => clearInterval(timer)
-  }, [isHovered])
-
-  const nextSlide = () => setActiveIndex((current) => (current + 1) % testimonials.length)
-  const prevSlide = () => setActiveIndex((current) => (current - 1 + testimonials.length) % testimonials.length)
+  
+  // Quadruple the testimonials to ensure we have enough width for a smooth loop
+  const duplicatedTestimonials = [...testimonials, ...testimonials, ...testimonials, ...testimonials]
 
   return (
     <div 
-      className="relative w-full max-w-5xl mx-auto h-[400px] flex items-center justify-center overflow-hidden"
+      className="relative w-full overflow-hidden py-12"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <div className="absolute inset-0 flex items-center justify-center perspective-[1000px]">
-        <AnimatePresence initial={false} mode="popLayout">
-          {testimonials.map((t, index) => {
-            // Determine position relative to active index
-            let offset = index - activeIndex
-            // Handle wrap-around
-            if (offset > Math.floor(testimonials.length / 2)) offset -= testimonials.length
-            if (offset < -Math.floor(testimonials.length / 2)) offset += testimonials.length
+      {/* Gradient overlays for fade effect */}
+      <div className="absolute inset-y-0 left-0 w-24 sm:w-48 bg-gradient-to-r from-white via-white/80 to-transparent z-10 pointer-events-none" />
+      <div className="absolute inset-y-0 right-0 w-24 sm:w-48 bg-gradient-to-l from-white via-white/80 to-transparent z-10 pointer-events-none" />
 
-            // Only render cards that are nearby
-            if (Math.abs(offset) > 2) return null
-
-            const isCenter = offset === 0
-            const isLeft = offset < 0
-
-            return (
-              <motion.div
-                key={index}
-                layout
-                initial={{ opacity: 0, scale: 0.8, x: isLeft ? -100 : 100 }}
-                animate={{
-                  opacity: isCenter ? 1 : 0.6,
-                  scale: isCenter ? 1 : 0.85,
-                  x: offset * 250, // spread them out
-                  z: isCenter ? 0 : -100,
-                  rotateY: offset * -15, // slight rotation towards center
-                  filter: isCenter ? 'blur(0px)' : 'blur(4px)',
-                  zIndex: testimonials.length - Math.abs(offset)
-                }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                onClick={() => setActiveIndex(index)}
-                className={`absolute w-full max-w-md bg-white border border-surface-300 rounded-3xl p-8 shadow-xl ${!isCenter ? 'cursor-pointer pointer-events-auto hover:opacity-80' : ''}`}
-              >
-                <div className="flex gap-1 mb-6">
-                  {[...Array(t.rating)].map((_, i) => <Star key={i} className="w-5 h-5 text-amber-400 fill-amber-400" />)}
+      <motion.div 
+        className="flex gap-6 w-max"
+        animate={{
+          x: ["-50%", "0%"] // Move left-to-right
+        }}
+        transition={{
+          duration: 35,
+          ease: "linear",
+          repeat: Infinity,
+          paused: isHovered
+        }}
+      >
+        {duplicatedTestimonials.map((t, index) => (
+          <div 
+            key={index}
+            className="flex-shrink-0 w-[350px] sm:w-[450px] bg-white border border-surface-200 rounded-[2rem] p-8 sm:p-10 shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-2 group"
+          >
+            <div className="flex gap-1 mb-6">
+              {[...Array(t.rating)].map((_, i) => (
+                <Star key={i} className="w-5 h-5 text-amber-400 fill-amber-400 group-hover:scale-110 transition-transform duration-300" style={{ transitionDelay: `${i * 50}ms` }} />
+              ))}
+            </div>
+            <p className="text-text-700 mb-10 leading-relaxed text-lg italic font-medium">"{t.text}"</p>
+            <div className="flex items-center gap-5">
+              <div className="w-14 h-14 bg-primary-100 rounded-2xl flex items-center justify-center rotate-3 group-hover:rotate-0 transition-transform duration-300">
+                <span className="text-primary-800 font-bold text-xl">{t.name[0]}</span>
+              </div>
+              <div>
+                <div className="text-text-900 font-bold text-lg">{t.name}</div>
+                <div className="flex items-center gap-2 text-text-400 text-sm">
+                  <MapPin className="w-3.5 h-3.5" />
+                  {t.location}
                 </div>
-                <p className="text-text-700 mb-8 leading-relaxed text-lg">"{t.text}"</p>
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-primary-200 rounded-full flex items-center justify-center">
-                    <span className="text-primary-900 font-bold text-lg">{t.name[0]}</span>
-                  </div>
-                  <div>
-                    <div className="text-text-900 font-semibold">{t.name}</div>
-                    <div className="text-text-400 text-sm">{t.location}</div>
-                  </div>
-                </div>
-              </motion.div>
-            )
-          })}
-        </AnimatePresence>
-      </div>
-
-      {/* Navigation Buttons */}
-      <div className="absolute z-50 flex gap-4 bottom-0">
-        <button 
-          onClick={prevSlide}
-          className="w-10 h-10 rounded-full bg-white/80 backdrop-blur border border-surface-300 shadow-md flex items-center justify-center text-text-700 hover:text-primary-800 hover:bg-white transition-colors"
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </button>
-        <button 
-          onClick={nextSlide}
-          className="w-10 h-10 rounded-full bg-white/80 backdrop-blur border border-surface-300 shadow-md flex items-center justify-center text-text-700 hover:text-primary-800 hover:bg-white transition-colors"
-        >
-          <ChevronRight className="w-5 h-5" />
-        </button>
-      </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </motion.div>
     </div>
   )
 }
+
 
 // Fade in up animation wrapper
 const FadeInUp = ({ children, delay = 0, className = "" }: { children: React.ReactNode, delay?: number, className?: string }) => (
