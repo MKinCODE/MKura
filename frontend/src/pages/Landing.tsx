@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { MapPin, Phone, Mail, Clock, Award, Shield, ChevronDown, Star, ArrowRight, MessageCircle } from 'lucide-react'
 
@@ -39,37 +39,33 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
 }
 
 function TestimonialCarousel() {
+  const [activeIndex, setActiveIndex] = useState(0)
   const [isHovered, setIsHovered] = useState(false)
-  
-  // Quadruple the testimonials to ensure we have enough width for a smooth loop
-  const duplicatedTestimonials = [...testimonials, ...testimonials, ...testimonials, ...testimonials]
+
+  useEffect(() => {
+    if (!isHovered) {
+      const timer = setInterval(() => {
+        setActiveIndex((current) => (current + 1) % testimonials.length)
+      }, 3500)
+      return () => clearInterval(timer)
+    }
+  }, [isHovered])
 
   return (
     <div 
-      className="relative w-full overflow-hidden py-12"
+      className="relative w-full overflow-hidden py-12 px-4"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      {/* Gradient overlays for fade effect */}
-      <div className="absolute inset-y-0 left-0 w-24 sm:w-48 bg-gradient-to-r from-white via-white/80 to-transparent z-10 pointer-events-none" />
-      <div className="absolute inset-y-0 right-0 w-24 sm:w-48 bg-gradient-to-l from-white via-white/80 to-transparent z-10 pointer-events-none" />
-
       <motion.div 
-        className="flex gap-6 w-max"
-        animate={{
-          x: ["-50%", "0%"] // Move left-to-right
-        }}
-        transition={{
-          duration: 35,
-          ease: "linear",
-          repeat: Infinity,
-          paused: isHovered
-        }}
+        className="flex gap-6"
+        animate={{ x: `calc(-${activeIndex * 100}% - ${activeIndex * 1.5}rem)` }}
+        transition={{ type: "spring", stiffness: 300, damping: 30 }}
       >
-        {duplicatedTestimonials.map((t, index) => (
+        {testimonials.map((t, index) => (
           <div 
             key={index}
-            className="flex-shrink-0 w-[350px] sm:w-[450px] bg-white border border-surface-200 rounded-[2rem] p-8 sm:p-10 shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-2 group"
+            className="flex-shrink-0 w-full md:w-[calc(50%-0.75rem)] lg:w-[calc(33.333%-1rem)] bg-white border border-surface-200 rounded-[2rem] p-8 sm:p-10 shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-2 group"
           >
             <div className="flex gap-1 mb-6">
               {[...Array(t.rating)].map((_, i) => (
@@ -111,6 +107,11 @@ const FadeInUp = ({ children, delay = 0, className = "" }: { children: React.Rea
 )
 
 export default function Landing() {
+  const openChat = (e: React.MouseEvent) => {
+    e.preventDefault()
+    window.dispatchEvent(new Event('openChat'))
+  }
+
   return (
     <div className="min-h-screen bg-white">
       {/* Navbar */}
@@ -129,7 +130,7 @@ export default function Landing() {
             <a href="#faq" className="text-text-700 hover:text-primary-800 transition-colors text-sm font-medium">FAQ</a>
             <a href="#location" className="text-text-700 hover:text-primary-800 transition-colors text-sm font-medium">Location</a>
           </div>
-          <a href="#book" className="bg-primary-800 hover:bg-primary-700 text-white px-5 py-2.5 rounded-lg font-semibold text-sm transition-colors">Book Now</a>
+          <a href="#book" onClick={openChat} className="bg-primary-800 hover:bg-primary-700 text-white px-5 py-2.5 rounded-lg font-semibold text-sm transition-colors">Book Now</a>
         </div>
       </nav>
 
@@ -149,7 +150,7 @@ export default function Landing() {
                 Experience personalized healthcare with AI-powered appointment booking. Chat with MKura, our assistant, to find the earliest available slot in seconds.
               </p>
               <div className="flex flex-wrap gap-4 mb-10">
-                <a href="#book" className="bg-primary-800 hover:bg-primary-700 text-white px-7 py-3.5 rounded-xl font-semibold text-base transition-all hover:shadow-lg hover:shadow-primary-800/20 flex items-center gap-2">
+                <a href="#book" onClick={openChat} className="bg-primary-800 hover:bg-primary-700 text-white px-7 py-3.5 rounded-xl font-semibold text-base transition-all hover:shadow-lg hover:shadow-primary-800/20 flex items-center gap-2">
                   Book Appointment <ArrowRight className="w-5 h-5" />
                 </a>
                 <a href="tel:+919876543210" className="border-2 border-surface-400 hover:border-primary-600 text-text-900 px-7 py-3.5 rounded-xl font-semibold text-base transition-colors flex items-center gap-2">
@@ -210,7 +211,7 @@ export default function Landing() {
                     <div className="flex items-start gap-4"><div className="p-2 bg-primary-50 rounded-lg"><Clock className="w-5 h-5 text-primary-700 flex-shrink-0" /></div><div><div className="text-text-900 font-medium">Clinic Hours</div><div className="text-text-500 text-sm mt-1">Mon – Sat: 9:00 AM – 6:00 PM</div></div></div>
                   </div>
                   <p className="text-text-500 leading-relaxed mb-8 border-l-4 border-primary-200 pl-4 italic">"Committed to providing personalized healthcare with a patient-first approach. Specialized in diabetes, hypertension, and preventive health checkups."</p>
-                  <a href="#book" className="inline-flex items-center gap-2 bg-primary-800 hover:bg-primary-700 text-white px-7 py-3.5 rounded-xl font-semibold transition-colors shadow-md hover:shadow-lg">Book Consultation <ArrowRight className="w-5 h-5" /></a>
+                  <a href="#book" onClick={openChat} className="inline-flex items-center gap-2 bg-primary-800 hover:bg-primary-700 text-white px-7 py-3.5 rounded-xl font-semibold transition-colors shadow-md hover:shadow-lg">Book Consultation <ArrowRight className="w-5 h-5" /></a>
                 </div>
               </div>
             </div>
@@ -244,7 +245,7 @@ export default function Landing() {
           <FadeInUp>
             <h2 className="font-display text-3xl sm:text-4xl font-bold text-white mb-6">Ready to book your appointment?</h2>
             <p className="text-white/90 text-lg mb-10 max-w-2xl mx-auto leading-relaxed">Click the chat button at the bottom-right to talk to MKura, our AI assistant. Get the earliest available slot in under 2 minutes.</p>
-            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="inline-block">
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="inline-block" onClick={openChat}>
               <div className="inline-flex items-center gap-3 bg-white text-accent-700 px-8 py-4 rounded-xl text-lg font-bold shadow-xl cursor-pointer">
                 <MessageCircle className="w-6 h-6" /> Chat with us to book →
               </div>

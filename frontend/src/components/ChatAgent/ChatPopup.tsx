@@ -28,6 +28,12 @@ export default function ChatPopup() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, isLoading])
 
+  useEffect(() => {
+    const handleOpenChat = () => setIsOpen(true)
+    window.addEventListener('openChat', handleOpenChat)
+    return () => window.removeEventListener('openChat', handleOpenChat)
+  }, [])
+
   // Prevent body scroll when chat is open
   useEffect(() => {
     if (isOpen) {
