@@ -9,6 +9,9 @@ interface Message {
   content: string
 }
 
+const SESSION_KEY = 'mkura_session_id'
+const MESSAGES_KEY = 'mkura_messages'
+
 export default function ChatPopup() {
   const [isOpen, setIsOpen] = useState(false)
   const [messages, setMessages] = useState<Message[]>([
@@ -23,6 +26,7 @@ export default function ChatPopup() {
   const [showPayment, setShowPayment] = useState(false)
   const [bookingData, setBookingData] = useState<any>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const [isRestored, setIsRestored] = useState(false)
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -33,6 +37,38 @@ export default function ChatPopup() {
     window.addEventListener('openChat', handleOpenChat)
     return () => window.removeEventListener('openChat', handleOpenChat)
   }, [])
+
+  useEffect(() => {
+    if (isOpen && !isRestored) {
+      const savedSessionId = localStorage.getItem(SESSION_KEY)
+      const savedMessages = localStorage.getItem(MESSAGES_KEY)
+
+      if (savedSessionId && savedMessages) {
+        try {
+          const parsedMessages = JSON.parse(savedMessages)
+          if (Array.isArray(parsedMessages) && parsedMessages.length > 0) {
+            setSessionId(savedSessionId)
+            setMessages(parsedMessages)
+            setIsRestored(true)
+            setTimeout(() => {
+              messagesEndRef.current?.scrollIntoView({ behavior: 'auto' })
+            }, 100)
+          }
+        } catch (e) {
+          console.error('Failed to restore session:', e)
+          localStorage.removeItem(SESSION_KEY)
+          localStorage.removeItem(MESSAGES_KEY)
+        }
+      }
+    }
+  }, [isOpen, isRestored])
+
+  useEffect(() => {
+    if (sessionId && messages.length > 0) {
+      localStorage.setItem(SESSION_KEY, sessionId)
+      localStorage.setItem(MESSAGES_KEY, JSON.stringify(messages))
+    }
+  }, [sessionId, messages])
 
   // Prevent body scroll when chat is open
   useEffect(() => {

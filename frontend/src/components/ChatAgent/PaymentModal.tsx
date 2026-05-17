@@ -100,6 +100,9 @@ function PaymentForm({
   )
 }
 
+const SESSION_KEY = 'mkura_session_id'
+const MESSAGES_KEY = 'mkura_messages'
+
 export function PaymentModal({
   isOpen,
   onClose,
@@ -115,6 +118,12 @@ export function PaymentModal({
 }) {
   const [success, setSuccess] = useState(false)
 
+  const handleClose = () => {
+    localStorage.removeItem(SESSION_KEY)
+    localStorage.removeItem(MESSAGES_KEY)
+    onClose()
+  }
+
   if (!isOpen) return null
 
   return (
@@ -124,7 +133,7 @@ export function PaymentModal({
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="absolute inset-0 bg-black/40 chat-backdrop"
-        onClick={onClose}
+        onClick={handleClose}
       />
 
       <motion.div
@@ -150,7 +159,7 @@ export function PaymentModal({
             <button
               onClick={() => {
                 if (onPaymentComplete) onPaymentComplete()
-                else onClose()
+                else handleClose()
               }}
               className="bg-primary-800 hover:bg-primary-700 text-white font-semibold px-6 py-2.5 rounded-xl transition-colors"
             >
@@ -164,7 +173,7 @@ export function PaymentModal({
                 <CreditCard className="w-5 h-5 text-white" />
                 <h3 className="font-semibold text-white">Confirm Booking</h3>
               </div>
-              <button onClick={onClose} className="text-white/70 hover:text-white">
+              <button onClick={handleClose} className="text-white/70 hover:text-white">
                 <X className="w-5 h-5" />
               </button>
             </div>

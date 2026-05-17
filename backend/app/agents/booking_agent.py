@@ -3,8 +3,21 @@ from typing import Optional, Dict, Any, List
 from enum import Enum
 from datetime import datetime
 import uuid
+import logging
 
 from .nlp import extract_email, extract_phone, extract_name, classify_intent, ConfirmationIntent
+from app.core.config import settings
+
+logger = logging.getLogger(__name__)
+
+groq_client = None
+if settings.GROQ_API_KEY:
+    try:
+        from groq import Groq
+        groq_client = Groq(api_key=settings.GROQ_API_KEY)
+        logger.info("Groq client initialized successfully")
+    except Exception as e:
+        logger.warning(f"Failed to initialize Groq client: {e}")
 
 
 class BookingStage(str, Enum):
@@ -102,7 +115,11 @@ class BookingAgentService:
                 agent.stage = BookingStage.EMAIL
                 response = f"Nice to meet you, {name}! What's your email address?"
             else:
-                response = "I didn't catch your name. Could you please tell me your full name?"
+                response = self._get_groq_fallback(
+                    message,
+                    "The user is trying to provide their name but it's not recognized as a valid name. "
+                    "Politely ask them to provide their full name (e.g., John Doe). Keep it brief."
+                )
             agent.add_message("assistant", response)
             return {"response": response, "session_id": agent.session_id, "stage": agent.stage.value}
 
@@ -113,7 +130,11 @@ class BookingAgentService:
                 agent.stage = BookingStage.PHONE
                 response = f"Got it! What's your phone number? (We'll only use it for appointment-related communications)"
             else:
-                response = "I couldn't find a valid email. Please enter your email address (e.g., name@example.com)"
+                response = self._get_groq_fallback(
+                    message,
+                    "The user is trying to provide their email but it's not recognized as a valid email format. "
+                    "Politely ask them to provide a valid email address (e.g., name@example.com). Keep it brief."
+                )
             agent.add_message("assistant", response)
             return {"response": response, "session_id": agent.session_id, "stage": agent.stage.value}
 
@@ -125,11 +146,51 @@ class BookingAgentService:
                 response = "PERFECT! I'll now find the earliest available slot for you."
                 agent.context["search_slots"] = True
             else:
-                response = "I couldn't find a valid phone number. Please enter your 10-digit phone number."
+                response = self._get_groq_fallback(
+                    message,
+                    "The user is trying to provide their phone number but it's not recognized as valid. "
+                    "Politely ask them to provide their 10-digit phone number (e.g., 9876543210). Keep it brief."
+                )
             agent.add_message("assistant", response)
             return {"response": response, "session_id": agent.session_id, "stage": agent.stage.value}
 
         return {"response": "Something went wrong. Please start again.", "session_id": agent.session_id, "stage": agent.stage.value}
+
+    def _get_groq_fallback(self, user_message: str, instruction: str) -> str:
+        if not groq_client:
+            if "name" in instruction.lower():
+                return "I didn't catch your name. Could you please tell me your full name?"
+            elif "email" in instruction.lower():
+                return "I couldn't find a valid email. Please enter your email address (e.g., name@example.com)"
+            elif "phone" in instruction.lower():
+                return "I couldn't find a valid phone number. Please enter your 10-digit phone number."
+            return "Please provide the requested information."
+
+        try:
+            system_prompt = (
+                "You are MKura, a friendly healthcare scheduling assistant at MK Health Clinic. "
+                f"{instruction} "
+                "Be concise, polite, and guide the user to provide the required information."
+            )
+            response = groq_client.chat.completions.create(
+                model="llama-3.3-70b-versatile",
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_message}
+                ],
+                max_tokens=100,
+                temperature=0.7
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            logger.error(f"Groq API error: {e}")
+            if "name" in instruction.lower():
+                return "I didn't catch your name. Could you please tell me your full name?"
+            elif "email" in instruction.lower():
+                return "I couldn't find a valid email. Please enter your email address (e.g., name@example.com)"
+            elif "phone" in instruction.lower():
+                return "I couldn't find a valid phone number. Please enter your 10-digit phone number."
+            return "Please provide the requested information."
 
     def _handle_slot_selection(self, agent: BookingAgent, message: str) -> Dict[str, Any]:
         intent = classify_intent(message)
@@ -179,8 +240,7 @@ class BookingAgentService:
 
         agent.stage = BookingStage.COMPLETE
         response = (
-            "Thank you! Your booking is confirmed.\n\n"
-            "You'll receive a confirmation email shortly with all the details and a cancellation link.\n\n"
+            "Thank you! Your booking is confirmed and a confirmation email has been sent to your specified email address.\n\n"
             "We look forward to seeing you! Take care! 👋"
         )
         agent.add_message("assistant", response)
@@ -217,6 +277,23 @@ class BookingAgentService:
         if session_id in self.sessions:
             return self.sessions[session_id].data
         return None
+
+    def check_slot_valid(self, slot_id: int, slot_datetime: Optional[datetime] = None) -> bool:
+        if slot_datetime is None:
+            return True
+        return slot_datetime > datetime.now()
+
+    def prepare_slot_expired_response(self, agent: BookingAgent) -> Dict[str, Any]:
+        agent.stage = BookingStage.SLOT_SELECTION
+        agent.context["search_slots"] = True
+        agent.data.confirmed_slot_id = None
+        agent.data.selected_slot_info = None
+        response = (
+            "The previous slot is no longer available. I'll find the new earliest available slot for you. "
+            "Please wait..."
+        )
+        agent.add_message("assistant", response)
+        return {"response": response, "session_id": agent.session_id, "stage": agent.stage.value, "action": "search_new_slot"}
 
 
 booking_agent_service = BookingAgentService()
