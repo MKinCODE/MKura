@@ -4,6 +4,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 const api = axios.create({
   baseURL: `${API_URL}/api`,
+  timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -67,6 +68,9 @@ export const doctorApi = {
 
   blockSlot: (slotId: number, reason?: string) =>
     api.post('/slots/block', { slot_id: slotId, reason }),
+
+  changePassword: (data: { old_password: string; new_password: string }) =>
+    api.post('/auth/change-password', data),
 }
 
 export default api

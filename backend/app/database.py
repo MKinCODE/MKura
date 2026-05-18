@@ -6,7 +6,13 @@ from .core.config import settings
 engine = create_async_engine(settings.DATABASE_URL, echo=settings.DEBUG)
 async_session_maker = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
-sync_engine = create_engine(settings.DATABASE_URL_SYNC, echo=settings.DEBUG)
+# Automatically derive synchronous PostgreSQL URL from the async connection URL if it has been updated
+db_url_sync = settings.DATABASE_URL_SYNC
+if settings.DATABASE_URL != "postgresql+asyncpg://postgres:postgres@localhost:5432/clinic_db":
+    if db_url_sync == "postgresql://postgres:postgres@localhost:5432/clinic_db" or not db_url_sync:
+        db_url_sync = settings.DATABASE_URL.replace("postgresql+asyncpg://", "postgresql://").replace("postgres+asyncpg://", "postgres://")
+
+sync_engine = create_engine(db_url_sync, echo=settings.DEBUG)
 
 
 class Base(DeclarativeBase):

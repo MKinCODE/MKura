@@ -4,7 +4,7 @@ from sqlalchemy import select
 
 from app.database import get_db
 from app.models import Doctor
-from app.schemas import DoctorLogin, Token, DoctorResponse, DoctorCreate
+from app.schemas import DoctorLogin, Token, DoctorResponse, DoctorCreate, PasswordChange
 from app.core.security import verify_password, get_password_hash, create_access_token, create_refresh_token, verify_token
 from app.core.config import settings
 from app.api.deps import get_current_doctor
@@ -55,3 +55,22 @@ async def refresh_token(refresh_token: str):
 @router.get("/me", response_model=DoctorResponse)
 async def get_me(doctor: Doctor = Depends(get_current_doctor)):
     return doctor
+
+
+@router.post("/change-password")
+async def change_password(
+    payload: PasswordChange,
+    doctor: Doctor = Depends(get_current_doctor),
+    db: AsyncSession = Depends(get_db),
+):
+    if not verify_password(payload.old_password, doctor.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Incorrect current password",
+        )
+
+    doctor.password_hash = get_password_hash(payload.new_password)
+    db.add(doctor)
+    await db.commit()
+
+    return {"message": "Password changed successfully"}

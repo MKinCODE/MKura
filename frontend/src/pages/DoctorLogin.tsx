@@ -23,7 +23,11 @@ export default function DoctorLogin() {
       localStorage.setItem('refresh_token', response.data.refresh_token)
       navigate('/doctor/dashboard')
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Invalid credentials')
+      if (!err.response) {
+        setError('Cannot connect to the backend server. Please verify your VITE_API_URL and ensure the backend is running and accessible.')
+      } else {
+        setError(err.response.data?.detail || 'Invalid credentials')
+      }
     } finally {
       setLoading(false)
     }
@@ -61,7 +65,7 @@ export default function DoctorLogin() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 className="w-full bg-surface-100 border border-surface-400 rounded-xl px-4 py-3 text-text-900 placeholder-text-400 focus:outline-none focus:border-primary-700 transition-colors"
-                placeholder="dr.mehta@mkhealth.com"
+                placeholder="Enter your email"
               />
             </div>
 
@@ -107,16 +111,6 @@ export default function DoctorLogin() {
           <a href="/" className="text-text-500 hover:text-primary-800 text-sm transition-colors">
             Back to Home
           </a>
-        </div>
-
-        <div className="mt-6 bg-white border border-surface-300 rounded-xl p-4 shadow-sm">
-          <p className="text-text-500 text-sm text-center mb-2">Demo Credentials</p>
-          <p className="text-text-700 text-sm text-center">
-            Email: <span className="text-text-900 font-medium">dr.mehta@mkhealth.com</span>
-          </p>
-          <p className="text-text-700 text-sm text-center">
-            Password: <span className="text-text-900 font-medium">doctor123</span>
-          </p>
         </div>
       </motion.div>
     </div>

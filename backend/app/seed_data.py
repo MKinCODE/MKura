@@ -10,13 +10,13 @@ from dateutil.rrule import rrule, DAILY
 
 
 def seed_doctor(session: Session):
-    doctor = session.query(Doctor).filter(Doctor.email == "dr.mehta@mkhealth.com").first()
+    doctor = session.query(Doctor).filter(Doctor.email == settings.SEED_DOCTOR_EMAIL).first()
 
     if not doctor:
         doctor = Doctor(
-            email="dr.mehta@mkhealth.com",
-            password_hash=get_password_hash("doctor123"),
-            name="Dr. Vikram Mehta",
+            email=settings.SEED_DOCTOR_EMAIL,
+            password_hash=get_password_hash(settings.SEED_DOCTOR_PASSWORD),
+            name="Dr. Mousam",
             specialization="General Physician & Internal Medicine",
             bio="Committed to providing personalized healthcare with a patient-first approach. Specialized in diabetes, hypertension, and preventive health checkups.",
             degrees="MBBS (AIIMS Delhi), MD (Medicine), FIACM",

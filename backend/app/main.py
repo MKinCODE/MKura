@@ -10,6 +10,13 @@ from .api.routes import auth_router, bookings_router, slots_router, chat_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
+    # Automatically seed the doctor credentials, weekly schedules, and rolling slots on startup
+    try:
+        from .seed_data import seed_all
+        seed_all()
+        print("Database seeded successfully on startup!")
+    except Exception as e:
+        print(f"Startup database seeding check: {e}")
     yield
 
 

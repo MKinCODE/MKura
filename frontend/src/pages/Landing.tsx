@@ -41,9 +41,16 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
 function TestimonialCarousel() {
   const [activeIndex, setActiveIndex] = useState(0)
   const [isHovered, setIsHovered] = useState(false)
+  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 1200)
   const containerRef = useRef<HTMLDivElement>(null)
 
   const totalSlides = testimonials.length
+
+  useEffect(() => {
+    const handleResize = () => setWindowWidth(window.innerWidth)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   useEffect(() => {
     if (!isHovered) {
@@ -68,29 +75,42 @@ function TestimonialCarousel() {
     const isLeft = relativeIndex === totalSlides - 1
     const isRight = relativeIndex === 1
 
+    const isMobile = windowWidth < 640
+    const desktopOffset = 260
+    const mobileOffset = 80
+
     if (isCenter) {
       return {
         zIndex: 30,
         scale: 1,
         opacity: 1,
         filter: 'blur(0px)',
-        transform: 'translateX(0) scale(1)',
+        x: 0,
       }
-    } else if (isLeft || isRight) {
+    } else if (isLeft) {
       return {
         zIndex: 20,
-        scale: 0.92,
-        opacity: 0.6,
+        scale: isMobile ? 0.85 : 0.9,
+        opacity: isMobile ? 0.15 : 0.5,
         filter: 'blur(4px)',
-        transform: isLeft ? 'translateX(-60px) scale(0.92)' : 'translateX(60px) scale(0.92)',
+        x: isMobile ? -mobileOffset : -desktopOffset,
+      }
+    } else if (isRight) {
+      return {
+        zIndex: 20,
+        scale: isMobile ? 0.85 : 0.9,
+        opacity: isMobile ? 0.15 : 0.5,
+        filter: 'blur(4px)',
+        x: isMobile ? mobileOffset : desktopOffset,
       }
     } else {
+      const isFarLeft = (index - activeIndex + totalSlides) % totalSlides < totalSlides / 2
       return {
         zIndex: 10,
-        scale: 0.85,
-        opacity: 0.3,
+        scale: 0.8,
+        opacity: 0,
         filter: 'blur(8px)',
-        transform: isLeft ? 'translateX(-120px) scale(0.85)' : 'translateX(120px) scale(0.85)',
+        x: isFarLeft ? -400 : 400,
       }
     }
   }
@@ -110,14 +130,14 @@ function TestimonialCarousel() {
               className="absolute w-full max-w-lg bg-white border border-surface-200 rounded-[2rem] p-8 sm:p-10 shadow-lg cursor-pointer"
               initial={false}
               animate={{
-                x: index === activeIndex ? 0 : (index - activeIndex + totalSlides) % totalSlides < totalSlides / 2 ? -300 : 300,
+                x: style.x,
                 scale: style.scale,
                 opacity: style.opacity,
                 filter: style.filter,
               }}
               transition={{ type: "spring", stiffness: 200, damping: 25 }}
               onClick={() => setActiveIndex(index)}
-              style={{ transform: style.transform }}
+              style={{ zIndex: style.zIndex }}
             >
               <div className="flex gap-1 mb-6">
                 {[...Array(t.rating)].map((_, i) => (

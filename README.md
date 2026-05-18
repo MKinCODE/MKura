@@ -114,12 +114,12 @@ Multi-agent-clinic-scheduler/
 
 ---
 
-## 🩺 Demo Credentials
+## 🩺 Demo & Doctor Portal Seeding
 
-To explore the dashboard views and check the scheduling logic flow:
+To explore the doctor dashboard, the system includes an automated seeding process on backend startup:
 
-*   **Doctor Panel Account**: `dr.mehta@mkhealth.com`
-*   **Doctor Panel Password**: `doctor123`
+*   **Configurable Doctor Portal Account**: By default, the database automatically seeds the doctor login with the email `mousam1234@mkhealth.com` and password `doctor123`.
+*   **Custom Seeding Credentials**: You can easily customize or secure these default credentials by setting the `SEED_DOCTOR_EMAIL` and `SEED_DOCTOR_PASSWORD` environment variables in your backend service (e.g. Render).
 *   **Simulated Checkout**: When prompted inside the chat modal, click the **"Pay ₹100"** button. The simulator handles state transactions and automatically redirects your active conversation.
 
 ---

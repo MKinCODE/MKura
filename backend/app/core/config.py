@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/clinic_db"
     DATABASE_URL_SYNC: str = "postgresql://postgres:postgres@localhost:5432/clinic_db"
 
+    SEED_DOCTOR_EMAIL: str = "mousam1234@mkhealth.com"
+    SEED_DOCTOR_PASSWORD: str = "doctor123"
+
     REDIS_URL: str = "redis://localhost:6379/0"
 
     SECRET_KEY: str = "your-secret-key-change-in-production-min-32-chars"

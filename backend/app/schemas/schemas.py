@@ -151,3 +151,8 @@ class AvailableSlotSearch(BaseModel):
 class BlockSlotRequest(BaseModel):
     slot_id: int
     reason: Optional[str] = None
+
+
+class PasswordChange(BaseModel):
+    old_password: str
+    new_password: str = Field(..., min_length=6)

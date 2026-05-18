@@ -24,6 +24,7 @@ from .schemas import (
     UpgradationResponse,
     AvailableSlotSearch,
     BlockSlotRequest,
+    PasswordChange,
 )
 
 __all__ = [
@@ -49,4 +50,5 @@ __all__ = [
     "UpgradationResponse",
     "AvailableSlotSearch",
     "BlockSlotRequest",
+    "PasswordChange",
 ]

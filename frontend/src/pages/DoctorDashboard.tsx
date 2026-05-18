@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { Calendar, Clock, Users, LogOut, Loader2, AlertCircle, CheckCircle, Blocks } from 'lucide-react'
+import { Calendar, Clock, Users, LogOut, Loader2, AlertCircle, CheckCircle, Blocks, Key, X } from 'lucide-react'
 import { doctorApi } from '../services/api'
 
 interface SlotData {
@@ -20,6 +20,7 @@ export default function DoctorDashboard() {
   const [loading, setLoading] = useState(true)
   const [blocking, setBlocking] = useState<number | null>(null)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
 
   useEffect(() => {
     const token = localStorage.getItem('doctor_token')
@@ -134,7 +135,14 @@ export default function DoctorDashboard() {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-text-500 text-sm">Dr. Vikram Mehta</span>
+            <span className="text-text-500 text-sm">Dr. Mousam</span>
+            <button
+              onClick={() => setShowPasswordModal(true)}
+              className="flex items-center gap-2 text-text-500 hover:text-primary-800 transition-colors text-sm"
+            >
+              <Key className="w-4 h-4" /> Change Password
+            </button>
+            <span className="text-text-300">|</span>
             <button onClick={handleLogout} className="flex items-center gap-2 text-text-500 hover:text-red-600 transition-colors text-sm">
               <LogOut className="w-4 h-4" /> Logout
             </button>
@@ -249,6 +257,164 @@ export default function DoctorDashboard() {
           </div>
         </div>
       </main>
+
+      <ChangePasswordModal isOpen={showPasswordModal} onClose={() => setShowPasswordModal(false)} />
+    </div>
+  )
+}
+
+interface ChangePasswordModalProps {
+  isOpen: boolean
+  onClose: () => void
+}
+
+function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProps) {
+  const [oldPassword, setOldPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState(false)
+
+  useEffect(() => {
+    if (isOpen) {
+      setOldPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+      setError(null)
+      setSuccess(false)
+    }
+  }, [isOpen])
+
+  if (!isOpen) return null
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+
+    if (newPassword.length < 6) {
+      setError('New password must be at least 6 characters long.')
+      return
+    }
+
+    if (newPassword !== confirmPassword) {
+      setError('New passwords do not match.')
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      await doctorApi.changePassword({ old_password: oldPassword, new_password: newPassword })
+      setSuccess(true)
+      setTimeout(() => {
+        onClose()
+      }, 2000)
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Failed to change password. Please verify your current password.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-white border border-surface-300 rounded-2xl w-full max-w-md p-8 shadow-2xl relative z-10"
+      >
+        <button
+          onClick={onClose}
+          className="absolute right-4 top-4 text-text-400 hover:text-text-900 transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
+            <Key className="w-5 h-5 text-primary-800" />
+          </div>
+          <div>
+            <h2 className="text-xl font-display font-bold text-text-900">Change Password</h2>
+            <p className="text-xs text-text-500">Update your account password</p>
+          </div>
+        </div>
+
+        {success ? (
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-center">
+            <CheckCircle className="w-8 h-8 text-emerald-600 mx-auto mb-2" />
+            <p className="text-emerald-800 font-semibold mb-1">Password Changed Successfully!</p>
+            <p className="text-emerald-600 text-xs">Closing modal...</p>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {error && (
+              <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
+                <span className="text-red-600 text-xs font-medium leading-tight">{error}</span>
+              </div>
+            )}
+
+            <div>
+              <label className="block text-text-700 text-sm font-medium mb-1.5">Current Password</label>
+              <input
+                type="password"
+                value={oldPassword}
+                onChange={(e) => setOldPassword(e.target.value)}
+                required
+                className="w-full bg-surface-100 border border-surface-400 rounded-xl px-4 py-2.5 text-text-900 focus:outline-none focus:border-primary-700 transition-colors text-sm"
+                placeholder="Enter current password"
+              />
+            </div>
+
+            <div>
+              <label className="block text-text-700 text-sm font-medium mb-1.5">New Password</label>
+              <input
+                type="password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                required
+                className="w-full bg-surface-100 border border-surface-400 rounded-xl px-4 py-2.5 text-text-900 focus:outline-none focus:border-primary-700 transition-colors text-sm"
+                placeholder="Enter new password (min. 6 chars)"
+              />
+            </div>
+
+            <div>
+              <label className="block text-text-700 text-sm font-medium mb-1.5">Confirm New Password</label>
+              <input
+                type="password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                required
+                className="w-full bg-surface-100 border border-surface-400 rounded-xl px-4 py-2.5 text-text-900 focus:outline-none focus:border-primary-700 transition-colors text-sm"
+                placeholder="Confirm new password"
+              />
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={loading}
+                className="flex-1 bg-surface-100 hover:bg-surface-200 text-text-700 font-semibold py-2.5 rounded-xl transition-colors text-sm border border-surface-300"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex-1 bg-primary-800 hover:bg-primary-700 disabled:bg-surface-400 text-white font-semibold py-2.5 rounded-xl transition-colors text-sm flex items-center justify-center gap-1.5"
+              >
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Update Password'}
+              </button>
+            </div>
+          </form>
+        )}
+      </motion.div>
     </div>
   )
 }
