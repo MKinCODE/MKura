@@ -29,8 +29,8 @@ async def login(credentials: DoctorLogin, db: AsyncSession = Depends(get_db)):
             detail="Account is deactivated",
         )
 
-    access_token = create_access_token({"sub": doctor.id})
-    refresh_token = create_refresh_token({"sub": doctor.id})
+    access_token = create_access_token({"sub": str(doctor.id)})
+    refresh_token = create_refresh_token({"sub": str(doctor.id)})
 
     return Token(access_token=access_token, refresh_token=refresh_token)
 
@@ -46,8 +46,8 @@ async def refresh_token(refresh_token: str):
         )
 
     doctor_id = payload.get("sub")
-    new_access_token = create_access_token({"sub": doctor_id})
-    new_refresh_token = create_refresh_token({"sub": doctor_id})
+    new_access_token = create_access_token({"sub": str(doctor_id)})
+    new_refresh_token = create_refresh_token({"sub": str(doctor_id)})
 
     return Token(access_token=new_access_token, refresh_token=new_refresh_token)
 

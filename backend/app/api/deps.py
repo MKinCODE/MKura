@@ -25,8 +25,16 @@ async def get_current_doctor(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    doctor_id = payload.get("sub")
-    if not doctor_id:
+    doctor_id_str = payload.get("sub")
+    if not doctor_id_str:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid token payload",
+        )
+
+    try:
+        doctor_id = int(doctor_id_str)
+    except (ValueError, TypeError):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token payload",
