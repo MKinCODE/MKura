@@ -1,358 +1,149 @@
-# MKura — Multi-Agent Healthcare Scheduling Assistant
+# MKura 🩺 — Multi-Agent AI Healthcare Scheduling Platform
 
-A production-ready, AI-driven clinic booking system built for **MK Health Clinic**. The platform leverages a multi-agent architecture powered by LLMs to handle conversational appointment booking, automated waitlist management, dynamic slot upgradation, and email notifications. The core AI system, **MKura**, seamlessly manages patient inquiries and scheduling.
+**MKura** is an enterprise-grade, conversation-driven healthcare scheduling platform designed to automate patient booking lifecycles, waitlist optimizations, and doctor-side operations. By leveraging a **Multi-Agent AI architecture** powered by high-frequency LLMs, the platform removes administrative friction, eliminates empty booking slots, and provides a premium patient-centric care portal.
 
-## Features
+---
 
-### Patient Experience
-- **AI Chat Agent**: Natural conversation to collect patient details (name, email, phone)
-- **Earliest Slot Booking**: Automatically finds the earliest available appointment
-- **Smart Lead Time**: 1-hour minimum booking window ensures patients can reach the clinic
-- **Payment Integration**: Simulated payment flow for ₹100 demo deposit (no real gateway needed)
-- **Email Notifications**: Confirmation, reminders, and cancellation emails
-- **Cancellation Portal**: Token-based secure cancellation with instant email confirmation
+## 🚀 Architectural & Engineering Highlights
 
-### Doctor Experience
-- **Dashboard**: View all bookings and slots for the next 7 days
-- **Emergency Blocking**: Block slots with existing bookings - system auto-reschedules patients
-- **Real-time Updates**: Instant email notifications to affected patients
+This project is built using modern software engineering patterns designed for high throughput, low latency, and robust state consistency:
 
-### Upgradation System
-- **Waitlist Interest**: Patients can opt-in to waitlist during booking
-- **Auto-Upgrade**: When someone cancels, the slot is offered to waitlist patients (FIFO)
-- **15-Minute Timeout**: Patients have 15 minutes to accept the upgraded slot
-- **Chain Continuation**: If declined/expired, offer goes to next patient until slot is filled
+### 1. Autonomous Multi-Agent AI Orchestration
+*   **Booking Agent**: A conversation-driven assistant utilizing the sub-second **Groq API (Llama 3)**. Instead of traditional static web forms, it uses structured natural language processing (**Intent Classifier + Entity Extractor**) to organically extract patient metadata (name, email, phone) and recommend the earliest available appointment slots.
+*   **Upgradation Agent**: An asynchronous state coordinator running a **First-In-First-Out (FIFO) waitlist queue**. When a booking is cancelled, it holds the slot, locks it from general availability, and extends a 15-minute priority upgrade offer via a secure, tokenized link to the next patient in line. If ignored or rejected, it automatically cascades the offer to subsequent candidates.
 
-## Tech Stack
+### 2. Event-Driven Doctor Operations
+*   **Emergency Slot Blocking**: If a doctor experiences an emergency and blocks a slot, the system automatically triggers an event-driven rescheduling pipeline. Impacted patients are notified immediately with customizable rescheduling actions, keeping clinical calendars fluid without administrative overhead.
+*   **Real-time Calendar Board**: A 7-day responsive grid visualization showing patient status, slot states (available, booked, waitlisted, blocked), and automatic day-to-day schedule rolling.
 
-| Layer | Technology |
-|-------|------------|
-| Frontend | React 18, TypeScript, Tailwind CSS, Framer Motion |
-| Backend | FastAPI (Python 3.11) |
-| Database | PostgreSQL 15 |
-| Cache/Queue | Redis 7 |
-| AI/NLP | Custom entity extraction + Groq API (LLM) |
-| Email | SMTP (aiosmtplib) |
-| Payment | Simulated Demo Payment |
-| Auth | JWT (Access + Refresh tokens) |
+### 3. Sleek Transient State & Concurrency Control
+*   **Simulated Demo Payment Lifecycle**: Replaced heavy external SDK dependencies with a modular, lightweight simulated checkout drawer. The checkout processes a ₹100 deposit with realistic transitions, and securely resumes the booking chat session on completion.
+*   **Concurreny & Booking Safeguards**: Implements a strict **1-hour minimum lead-time constraint** to prevent short-notice doctor disruptions. Automatically enforces hard boundaries by filtering out past-date slots and expired same-day times across all endpoints.
 
-## Project Structure
+---
+
+## 📊 System Architecture & Data Flow
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Patient as Patient (Web UI)
+    participant Chat as AI Chat Agent (Groq)
+    participant DB as PostgreSQL (DB)
+    participant UpStash as Redis (Cache/Rate-Limits)
+    participant Email as SMTP Server (SMTP)
+
+    Patient->>Chat: "Book a slot for tomorrow morning"
+    Chat->>UpStash: Check Rate-Limiting & Session State
+    Chat->>DB: Query Available Slots & Seeding State
+    DB-->>Chat: Returns Available Slots
+    Chat-->>Patient: Proposes slot + triggers Booking Checkout
+    Patient->>Patient: Submits simulated ₹100 payment
+    Patient->>DB: Persists Booking (Status: Confirmed)
+    DB-->>Email: Dispatch secure confirmation email with token
+    Email-->>Patient: Email received with cancellation & reschedule link
+```
+
+---
+
+## 🛠️ Advanced Tech Stack & Rationale
+
+| Layer | Technology | Engineering Rationale |
+| :--- | :--- | :--- |
+| **Frontend Framework** | `React 18` + `TypeScript` + `Vite` | Fast bundler speeds, strict type-safety across components, and optimized production asset compiling. |
+| **Styling & UI** | `Tailwind CSS` + `Framer Motion` | Modern glassmorphism themes, customized HSL color palette, and physics-based micro-animations for premium visual feedback. |
+| **Backend API** | `FastAPI (Python 3.11)` | Asynchronous ASGI framework providing native dependency injection, automatic Pydantic validation, and high-performance throughput. |
+| **Database ORM** | `PostgreSQL 15` + `SQLAlchemy (Asyncio)` | Robust relational storage with asynchronous engine execution, ensuring non-blocking PostgreSQL connection pooling. |
+| **Cache & Middleware** | `Redis 7` | Ultra-fast key-value store handling low-latency API rate-limiting and session synchronization. |
+| **Generative AI** | `Groq SDK (Llama 3 70B)` | Sub-second inference latency, allowing natural conversational flows and seamless token extraction. |
+| **Asynchronous Mailer** | `aiosmtplib` | Modern SMTP client ensuring notification dispatches don't block main threat event loops. |
+
+---
+
+## 📂 Clean & Scalable Directory Structure
+
+The repository is divided into a decoupled, high-cohesion monorepo design, separating frontend visual states from backend domain logic:
 
 ```
-clinic-scheduler/
-├── frontend/                    # React application
-│   ├── src/
-│   │   ├── components/
-│   │   │   ├── LandingPage/    # Landing page with doctor info
-│   │   │   ├── ChatAgent/      # Chat popup and payment modal
-│   │   │   ├── CancellationPage/
-│   │   │   ├── DoctorDashboard/
-│   │   │   └── ui/
-│   │   ├── pages/
-│   │   └── services/           # API integration
-│   └── ...
-├── backend/                     # FastAPI application
+Multi-agent-clinic-scheduler/
+├── backend/                         # FastAPI Application Service
 │   ├── app/
-│   │   ├── api/routes/         # API endpoints
-│   │   ├── agents/             # Booking & Upgradation agents
-│   │   ├── core/               # Config, security, rate limiting
-│   │   ├── models/             # SQLAlchemy models
-│   │   ├── schemas/            # Pydantic schemas
-│   │   ├── services/           # Email, payment, slot services
-│   │   └── main.py
-│   ├── requirements.txt
-│   └── seed_data.py            # Demo data seeder
-├── docker-compose.yml           # Full stack setup
-└── README.md
+│   │   ├── api/                     # REST API Controllers & Dependecies
+│   │   │   ├── routes/              # Auth, Bookings, Slots, and Chat router endpoints
+│   │   │   └── deps.py              # Auth middleware & Database session injectors
+│   │   ├── agents/                  # Intelligent AI Agents layer
+│   │   │   ├── nlp/                 # Entity Extractor & Intent Classifier services
+│   │   │   ├── booking_agent.py     # Dialogue state and scheduling AI agent
+│   │   │   └── upgradation_agent.py # Queue parser and FIFO waitlist scheduler
+│   │   ├── core/                    # App configurations, secrets, and Redis rate limiters
+│   │   ├── models/                  # Database relational models (Doctor, Slot, Booking, Waitlist)
+│   │   ├── schemas/                 # Strongly-typed input/output Pydantic structures
+│   │   ├── services/                # Asynchronous helper services (SMTP, Slot seeder)
+│   │   └── main.py                  # Lifespan initializer and CORS configurations
+│   ├── requirements.txt             # Python backend dependencies manifest
+│   └── seed_data.py                 # Seeds clinic calendar and default Doctor accounts
+├── frontend/                        # React Frontend Application
+│   ├── src/
+│   │   ├── components/              # Modular shared UI assets
+│   │   │   └── ChatAgent/           # Frosted glass AI chat agent overlay and Payment drawer
+│   │   ├── pages/                   # Main Page Views
+│   │   │   ├── Landing.tsx          # Premium landing page featuring coverflow carousel and chat modal trigger
+│   │   │   ├── DoctorLogin.tsx      # Multi-factor-styled Doctor credential page
+│   │   │   ├── DoctorDashboard.tsx  # Interactive 7-day doctor grid with slot-blocking action
+│   │   │   └── Cancellation.tsx     # Direct, tokenized client cancellation portal
+│   │   ├── services/                # Axios-configured API clients
+│   │   ├── index.css                # Custom global utility tokens and fonts
+│   │   └── App.tsx                  # Client router configurations
+│   └── package.json                 # Frontend dependencies and bundler configurations
+├── docker-compose.yml               # Production-like multi-container orchestrator
+└── README.md                        # Project documentation
 ```
 
-## Quick Start (Local Development)
+---
 
-### Prerequisites
-- Docker & Docker Compose
-- Node.js 18+ (for frontend development without Docker)
-- Python 3.11+ (for backend development without Docker)
+## 📈 Clinic Business Rules & Thresholds
 
-### 1. Clone and Setup Environment
+| Standard Rule | Set Value | Purpose |
+| :--- | :--- | :--- |
+| **Clinic Operating Hours** | `9:00 AM - 6:00 PM` | Defines clinic scheduling boundary windows. |
+| **Default Appointment Duration**| `20 Minutes` | Maximum length allocated per patient booking. |
+| **Minimum Booking Lead Time** | `1 Hour` | Enforces clinical buffer windows (prevents immediate walk-ins). |
+| **Same-Day Slot Booking Cutoff** | `5:00 PM` | Prevents late-afternoon bookings from scheduling on the same day. |
+| **Waitlist Upgrade Hold Timer** | `15 Minutes` | The amount of time a waitlisted patient has to claim an upgrade. |
+| **Simulated Payment Amount** | `₹100` | Refundable booking token used in the demo mode modal. |
 
-```bash
-# Clone the repository
-git clone <your-repo-url>
-cd clinic-scheduler
+---
 
-# Create backend .env file
-cp backend/.env.example backend/.env
-```
+## 🩺 Demo Credentials
 
-### 2. Configure Environment Variables
+To explore the dashboard views and check the scheduling logic flow:
 
-Edit `backend/.env` with your values:
+*   **Doctor Panel Account**: `dr.mehta@mkhealth.com`
+*   **Doctor Panel Password**: `doctor123`
+*   **Simulated Checkout**: When prompted inside the chat modal, click the **"Pay ₹100"** button. The simulator handles state transactions and automatically redirects your active conversation.
 
-```env
-# Database
-DATABASE_URL=postgresql+asyncpg://postgres:postgres@localhost:5432/clinic_db
-DATABASE_URL_SYNC=postgresql://postgres:postgres@localhost:5432/clinic_db
+---
 
-# Redis
-REDIS_URL=redis://localhost:6379/0
+## 📡 REST API Reference
 
-# Security (generate a new secret key)
-SECRET_KEY=your-super-secret-key-minimum-32-characters
+### 🔐 Authentication & Accounts
+*   `POST /api/auth/login` — Doctor credential verification & JWT token dispatch.
 
-# Groq AI (get free API key from https://console.groq.com)
-GROQ_API_KEY=your_groq_api_key
+### 💬 Conversational AI Engine
+*   `POST /api/chat/message` — Feeds natural text into the Groq Llama-3 parser to capture intents.
+*   `GET /api/chat/slots/earliest` — Extracts the next earliest operational appointment slot.
 
-# Email (use Gmail App Password or other SMTP provider)
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_USER=your-email@gmail.com
-SMTP_PASSWORD=your-app-password
+### 📅 Slots Operations
+*   `GET /api/slots/available` — Returns clinical slots for the rolling 7-day dashboard.
+*   `POST /api/slots/block` — Enforces an emergency calendar hold and triggers automated rescheduling cascades.
 
-# Frontend URL (for email links)
-CLIENT_URL=http://localhost:3000
-```
+### 🧾 Booking Lifecycle
+*   `POST /api/bookings/create` — Validates transience, accepts checkout details, and confirms booking.
+*   `GET /api/bookings/{id}/cancel/{token}` — Validates email-tokenized cancellation requests.
+*   `POST /api/bookings/{id}/cancel/{token}` — Commits the cancellation request, prompting the FIFO upgradation flow.
+*   `GET /api/bookings/doctor/all` — Queries all active bookings for authorized doctors.
 
-### 3. Start with Docker
+---
 
-```bash
-# Start all services (PostgreSQL, Redis, Backend, Frontend)
-docker-compose up -d
-
-# Initialize database and seed demo data
-docker-compose exec backend python -m app.seed_data
-```
-
-The application will be available at:
-- **Frontend**: http://localhost:3000
-- **Backend API**: http://localhost:8000
-- **API Docs**: http://localhost:8000/docs
-
-### 4. Demo Credentials
-
-**Doctor Login:**
-- Email: `dr.mehta@mkhealth.com`
-- Password: `doctor123`
-
-**Simulated Payment:**
-- Simply click "Pay ₹100" in the demo payment modal to proceed automatically.
-
-## Manual Development Setup
-
-### Backend
-
-```bash
-cd backend
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Start PostgreSQL and Redis (or use Docker)
-docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=clinic_db postgres:15
-docker run -d -p 6379:6379 redis:7
-
-# Run database migrations and seed
-python -m app.seed_data
-
-# Start development server
-uvicorn app.main:app --reload --port 8000
-```
-
-### Frontend
-
-```bash
-cd frontend
-
-# Install dependencies
-npm install
-
-# Start development server
-npm run dev
-```
-
-## Deployment Guide
-
-### Option 1: Railway (Recommended for Resume Projects)
-
-**Backend Deployment:**
-
-1. Create a new Railway project
-2. Add PostgreSQL plugin
-3. Add Redis plugin
-4. Deploy from GitHub (backend folder)
-5. Set environment variables in Railway dashboard
-6. Run seed command: `python -m app.seed_data`
-
-**Frontend Deployment:**
-
-1. Create a new Railway project
-2. Deploy from GitHub (frontend folder)
-3. Set environment variable: `VITE_API_URL=https://your-backend-url.railway.app`
-
-### Option 2: Render
-
-1. **Backend**:
-   - Create Web Service
-   - Build command: `pip install -r requirements.txt`
-   - Start command: `uvicorn app.main:app --host 0.0.0.0 --port $PORT`
-   - Add PostgreSQL and Redis from Render marketplace
-
-2. **Frontend**:
-   - Create Static Site
-   - Build command: `npm install && npm run build`
-   - Output directory: `dist`
-
-### Option 3: Vercel + Railway/Render
-
-**Frontend (Vercel):**
-```bash
-cd frontend
-npm install -g vercel
-vercel --prod
-```
-
-Set `VITE_API_URL` to your backend URL in Vercel dashboard.
-
-### Option 4: Docker + VPS
-
-```bash
-# SSH into your VPS
-ssh user@your-vps-ip
-
-# Install Docker
-curl -fsSL https://get.docker.com | sh
-
-# Clone and setup
-git clone <your-repo-url>
-cd clinic-scheduler
-
-# Create .env file with production values
-
-# Run with Docker Compose
-docker-compose -f docker-compose.yml up -d
-
-# Setup Nginx reverse proxy (optional)
-sudo apt install nginx
-sudo nano /etc/nginx/sites-available/clinic
-```
-
-Nginx config example:
-```nginx
-server {
-    listen 80;
-    server_name your-domain.com;
-
-    location / {
-        proxy_pass http://localhost:3000;
-    }
-
-    location /api {
-        proxy_pass http://localhost:8000;
-    }
-}
-```
-
-## Required Services Setup
-
-### Groq AI Setup
-1. Sign up at https://console.groq.com
-2. Create API key in console
-3. Free tier includes 30 requests/minute
-
-### Gmail SMTP Setup
-1. Enable 2-Factor Authentication on your Google account
-2. Generate App Password: Google Account > Security > App Passwords
-3. Use the 16-character app password as `SMTP_PASSWORD`
-
-### Alternative Email Providers
-
-**SendGrid:**
-```env
-SMTP_HOST=smtp.sendgrid.net
-SMTP_PORT=587
-SMTP_USER=apikey
-SMTP_PASSWORD=your_sendgrid_api_key
-```
-
-**Mailgun:**
-```env
-SMTP_HOST=smtp.mailgun.org
-SMTP_PORT=587
-SMTP_USER=postmaster@your-domain
-SMTP_PASSWORD=your_mailgun_password
-```
-
-## API Endpoints
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/auth/login` | Doctor authentication |
-| GET | `/api/chat/slots/earliest` | Get earliest available slot |
-| POST | `/api/chat/message` | Chat agent message |
-| POST | `/api/bookings/create` | Create booking |
-| GET | `/api/bookings/{id}/cancel/{token}` | Validate cancellation |
-| POST | `/api/bookings/{id}/cancel/{token}` | Cancel booking |
-| GET | `/api/slots/available` | Get available slots |
-| POST | `/api/slots/block` | Block slot (emergency) |
-| GET | `/api/bookings/doctor/all` | Doctor's bookings |
-| GET | `/api/bookings/doctor/slots` | Doctor's slots |
-
-## Business Rules
-
-| Rule | Value |
-|------|-------|
-| Minimum Lead Time | 1 hour from current time |
-| Clinic Hours | 9:00 AM - 6:00 PM |
-| Same-Day Cutoff | 5:00 PM |
-| Slot Duration | 20 minutes |
-| Waitlist Upgrade Timeout | 15 minutes |
-| Payment Amount | ₹100 (refundable) |
-
-## Troubleshooting
-
-### Database Connection Issues
-```bash
-# Check if PostgreSQL is running
-docker-compose ps postgres
-
-# View PostgreSQL logs
-docker-compose logs postgres
-
-# Reset database
-docker-compose down -v
-docker-compose up -d
-docker-compose exec backend python -m app.seed_data
-```
-
-### Chat Agent Not Responding
-1. Check Groq API key is set correctly
-2. Check backend logs: `docker-compose logs backend`
-3. Verify rate limiting not triggered
-
-### Emails Not Sending
-1. Verify SMTP credentials
-2. Check if less secure app access is enabled (for Gmail)
-3. Use app password instead of regular password (Gmail)
-
-## Future Enhancements
-
-- [ ] Multi-doctor support
-- [ ] WhatsApp integration
-- [ ] SMS notifications
-- [ ] Google Calendar sync
-- [ ] Patient accounts with booking history
-- [ ] Admin panel for managing doctors
-- [ ] Analytics dashboard
-- [ ] Recurring appointments
-- [ ] Video consultation integration
-
-## License
-
-MIT License - Feel free to use for your portfolio/resume!
-
-## Support
-
-For questions or issues, please open an issue on GitHub.
+## ⚖️ License
+Distributed under the **MIT License**. Feel free to use this system to showcase multi-agent orchestration, clean coding architectures, or modern responsive web interfaces in your portfolios!

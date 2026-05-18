@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { MapPin, Phone, Mail, Clock, Award, Shield, ChevronDown, Star, ArrowRight, MessageCircle } from 'lucide-react'
+import { MapPin, Phone, Mail, Clock, Award, Shield, ChevronDown, Star, ArrowRight, MessageCircle, ChevronLeft, ChevronRight } from 'lucide-react'
 
 const testimonials = [
   { name: 'Priya Sharma', location: 'Jaipur', text: 'Dr. Mehta is very thorough. The AI booking was so convenient!', rating: 5 },
@@ -41,53 +41,137 @@ function FAQItem({ question, answer }: { question: string; answer: string }) {
 function TestimonialCarousel() {
   const [activeIndex, setActiveIndex] = useState(0)
   const [isHovered, setIsHovered] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  const totalSlides = testimonials.length
 
   useEffect(() => {
     if (!isHovered) {
       const timer = setInterval(() => {
-        setActiveIndex((current) => (current + 1) % testimonials.length)
-      }, 3500)
+        setActiveIndex((current) => (current + 1) % totalSlides)
+      }, 4500)
       return () => clearInterval(timer)
     }
-  }, [isHovered])
+  }, [isHovered, totalSlides])
+
+  const goToPrev = () => {
+    setActiveIndex((current) => (current - 1 + totalSlides) % totalSlides)
+  }
+
+  const goToNext = () => {
+    setActiveIndex((current) => (current + 1) % totalSlides)
+  }
+
+  const getCardStyle = (index: number) => {
+    const relativeIndex = (index - activeIndex + totalSlides) % totalSlides
+    const isCenter = relativeIndex === 0
+    const isLeft = relativeIndex === totalSlides - 1
+    const isRight = relativeIndex === 1
+
+    if (isCenter) {
+      return {
+        zIndex: 30,
+        scale: 1,
+        opacity: 1,
+        filter: 'blur(0px)',
+        transform: 'translateX(0) scale(1)',
+      }
+    } else if (isLeft || isRight) {
+      return {
+        zIndex: 20,
+        scale: 0.92,
+        opacity: 0.6,
+        filter: 'blur(4px)',
+        transform: isLeft ? 'translateX(-60px) scale(0.92)' : 'translateX(60px) scale(0.92)',
+      }
+    } else {
+      return {
+        zIndex: 10,
+        scale: 0.85,
+        opacity: 0.3,
+        filter: 'blur(8px)',
+        transform: isLeft ? 'translateX(-120px) scale(0.85)' : 'translateX(120px) scale(0.85)',
+      }
+    }
+  }
 
   return (
-    <div 
-      className="relative w-full overflow-hidden py-12 px-4"
+    <div
+      className="relative w-full py-16 px-4"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
-      <motion.div 
-        className="flex gap-6"
-        animate={{ x: `calc(-${activeIndex * 100}% - ${activeIndex * 1.5}rem)` }}
-        transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      >
-        {testimonials.map((t, index) => (
-          <div 
-            key={index}
-            className="flex-shrink-0 w-full md:w-[calc(50%-0.75rem)] lg:w-[calc(33.333%-1rem)] bg-white border border-surface-200 rounded-[2rem] p-8 sm:p-10 shadow-sm hover:shadow-xl transition-all duration-500 hover:-translate-y-2 group"
-          >
-            <div className="flex gap-1 mb-6">
-              {[...Array(t.rating)].map((_, i) => (
-                <Star key={i} className="w-5 h-5 text-amber-400 fill-amber-400 group-hover:scale-110 transition-transform duration-300" style={{ transitionDelay: `${i * 50}ms` }} />
-              ))}
-            </div>
-            <p className="text-text-700 mb-10 leading-relaxed text-lg italic font-medium">"{t.text}"</p>
-            <div className="flex items-center gap-5">
-              <div className="w-14 h-14 bg-primary-100 rounded-2xl flex items-center justify-center rotate-3 group-hover:rotate-0 transition-transform duration-300">
-                <span className="text-primary-800 font-bold text-xl">{t.name[0]}</span>
+      <div className="relative flex items-center justify-center min-h-[420px]" ref={containerRef}>
+        {testimonials.map((t, index) => {
+          const style = getCardStyle(index)
+          return (
+            <motion.div
+              key={index}
+              className="absolute w-full max-w-lg bg-white border border-surface-200 rounded-[2rem] p-8 sm:p-10 shadow-lg cursor-pointer"
+              initial={false}
+              animate={{
+                x: index === activeIndex ? 0 : (index - activeIndex + totalSlides) % totalSlides < totalSlides / 2 ? -300 : 300,
+                scale: style.scale,
+                opacity: style.opacity,
+                filter: style.filter,
+              }}
+              transition={{ type: "spring", stiffness: 200, damping: 25 }}
+              onClick={() => setActiveIndex(index)}
+              style={{ transform: style.transform }}
+            >
+              <div className="flex gap-1 mb-6">
+                {[...Array(t.rating)].map((_, i) => (
+                  <Star key={i} className="w-5 h-5 text-amber-400 fill-amber-400" />
+                ))}
               </div>
-              <div>
-                <div className="text-text-900 font-bold text-lg">{t.name}</div>
-                <div className="flex items-center gap-2 text-text-400 text-sm">
-                  <MapPin className="w-3.5 h-3.5" />
-                  {t.location}
+              <p className="text-text-700 mb-10 leading-relaxed text-lg italic font-medium">"{t.text}"</p>
+              <div className="flex items-center gap-5">
+                <div className="w-14 h-14 bg-primary-100 rounded-2xl flex items-center justify-center rotate-3">
+                  <span className="text-primary-800 font-bold text-xl">{t.name[0]}</span>
+                </div>
+                <div>
+                  <div className="text-text-900 font-bold text-lg">{t.name}</div>
+                  <div className="flex items-center gap-2 text-text-400 text-sm">
+                    <MapPin className="w-3.5 h-3.5" />
+                    {t.location}
+                  </div>
                 </div>
               </div>
-            </div>
-          </div>
-        ))}
-      </motion.div>
+            </motion.div>
+          )
+        })}
+      </div>
+
+      <div className="flex items-center justify-center gap-6 mt-8">
+        <button
+          onClick={goToPrev}
+          className="w-12 h-12 rounded-full bg-white border border-surface-300 shadow-md flex items-center justify-center hover:bg-primary-50 hover:border-primary-400 transition-all"
+          aria-label="Previous testimonial"
+        >
+          <ChevronLeft className="w-5 h-5 text-text-700" />
+        </button>
+
+        <div className="flex gap-2">
+          {testimonials.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => setActiveIndex(idx)}
+              className={`h-2 rounded-full transition-all duration-300 ${
+                idx === activeIndex ? 'w-8 bg-primary-700' : 'w-2 bg-surface-300 hover:bg-surface-400'
+              }`}
+              aria-label={`Go to testimonial ${idx + 1}`}
+            />
+          ))}
+        </div>
+
+        <button
+          onClick={goToNext}
+          className="w-12 h-12 rounded-full bg-white border border-surface-300 shadow-md flex items-center justify-center hover:bg-primary-50 hover:border-primary-400 transition-all"
+          aria-label="Next testimonial"
+        >
+          <ChevronRight className="w-5 h-5 text-text-700" />
+        </button>
+      </div>
     </div>
   )
 }
