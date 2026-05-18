@@ -5,6 +5,7 @@ from typing import Optional
 class Settings(BaseSettings):
     APP_NAME: str = "MK Health Clinic API"
     DEBUG: bool = True
+    CLIENT_URL: str = "http://localhost:3000"
 
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/clinic_db"
     DATABASE_URL_SYNC: str = "postgresql://postgres:postgres@localhost:5432/clinic_db"
