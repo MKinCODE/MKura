@@ -114,3 +114,18 @@ class Upgradation(Base):
 
     booking = relationship("Booking", back_populates="upgradations")
     slot = relationship("Slot", lazy="selectin")
+
+
+class ChatSession(Base):
+    __tablename__ = "chat_sessions"
+
+    session_id = Column(String(255), primary_key=True, index=True)
+    stage = Column(String(50), default="name", nullable=False)
+    patient_name = Column(String(255), nullable=True)
+    patient_email = Column(String(255), nullable=True)
+    patient_phone = Column(String(20), nullable=True)
+    confirmed_slot_id = Column(Integer, nullable=True)
+    wants_waitlist = Column(Boolean, nullable=True)
+    messages = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())

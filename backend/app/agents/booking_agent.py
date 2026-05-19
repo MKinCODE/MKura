@@ -4,8 +4,17 @@ from enum import Enum
 from datetime import datetime
 import uuid
 import logging
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from .nlp import extract_email, extract_phone, extract_name, classify_intent, ConfirmationIntent
+from .nlp import (
+    extract_email,
+    extract_phone,
+    extract_name,
+    classify_intent,
+    ConfirmationIntent,
+    extract_name_smart,
+    extract_entities_with_llm,
+)
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -69,100 +78,214 @@ class BookingAgentService:
         self.sessions: Dict[str, BookingAgent] = {}
 
     def get_or_create_session(self, session_id: Optional[str] = None) -> BookingAgent:
+        # Fallback sync version for backward compatibility if any
         if session_id and session_id in self.sessions:
             return self.sessions[session_id]
-
         agent = BookingAgent()
+        if session_id:
+            agent.session_id = session_id
         self.sessions[agent.session_id] = agent
         return agent
 
-    def process_message(
+    async def load_session_from_db(self, db: AsyncSession, session_id: str) -> Optional[BookingAgent]:
+        from app.models.models import ChatSession
+        from sqlalchemy import select
+        import json
+        
+        try:
+            result = await db.execute(select(ChatSession).filter_by(session_id=session_id))
+            db_session = result.scalars().first()
+            if not db_session:
+                return None
+                
+            agent = BookingAgent(
+                session_id=db_session.session_id,
+                stage=BookingStage(db_session.stage),
+                data=BookingData(
+                    name=db_session.patient_name,
+                    email=db_session.patient_email,
+                    phone=db_session.patient_phone,
+                    confirmed_slot_id=db_session.confirmed_slot_id,
+                    wants_waitlist=db_session.wants_waitlist,
+                ),
+                messages=json.loads(db_session.messages) if db_session.messages else [],
+                context={}
+            )
+            return agent
+        except Exception as e:
+            logger.error(f"Error loading session {session_id} from DB: {e}")
+            return None
+
+    async def save_session_to_db(self, db: AsyncSession, agent: BookingAgent):
+        from app.models.models import ChatSession
+        from sqlalchemy import select
+        import json
+        
+        try:
+            result = await db.execute(select(ChatSession).filter_by(session_id=agent.session_id))
+            db_session = result.scalars().first()
+            
+            messages_json = json.dumps(agent.messages)
+            
+            if db_session:
+                db_session.stage = agent.stage.value
+                db_session.patient_name = agent.data.name
+                db_session.patient_email = agent.data.email
+                db_session.patient_phone = agent.data.phone
+                db_session.confirmed_slot_id = agent.data.confirmed_slot_id
+                db_session.wants_waitlist = agent.data.wants_waitlist
+                db_session.messages = messages_json
+            else:
+                db_session = ChatSession(
+                    session_id=agent.session_id,
+                    stage=agent.stage.value,
+                    patient_name=agent.data.name,
+                    patient_email=agent.data.email,
+                    patient_phone=agent.data.phone,
+                    confirmed_slot_id=agent.data.confirmed_slot_id,
+                    wants_waitlist=agent.data.wants_waitlist,
+                    messages=messages_json
+                )
+                db.add(db_session)
+                
+            await db.commit()
+        except Exception as e:
+            logger.error(f"Error saving session {agent.session_id} to DB: {e}")
+
+    async def get_or_create_session_async(self, db: AsyncSession, session_id: Optional[str] = None) -> BookingAgent:
+        if session_id and session_id in self.sessions:
+            return self.sessions[session_id]
+            
+        if session_id:
+            agent = await self.load_session_from_db(db, session_id)
+            if agent:
+                self.sessions[session_id] = agent
+                return agent
+                
+        agent = BookingAgent()
+        if session_id:
+            agent.session_id = session_id
+            
+        await self.save_session_to_db(db, agent)
+        self.sessions[agent.session_id] = agent
+        return agent
+
+    async def process_message(
         self,
+        db: AsyncSession,
         message: str,
         session_id: Optional[str] = None,
         slot_info: Optional[Dict[str, Any]] = None,
         payment_status: Optional[str] = None,
     ) -> Dict[str, Any]:
-        agent = self.get_or_create_session(session_id)
+        agent = await self.get_or_create_session_async(db, session_id)
         message = message.strip()
         agent.add_message("user", message)
 
         if agent.stage == BookingStage.SLOT_SELECTION:
-            return self._handle_slot_selection(agent, message)
-
-        if agent.stage == BookingStage.WAITLIST_PROMPT:
-            return self._handle_waitlist_prompt(agent, message)
-
-        if agent.stage == BookingStage.PAYMENT:
+            res = self._handle_slot_selection(agent, message)
+        elif agent.stage == BookingStage.WAITLIST_PROMPT:
+            res = self._handle_waitlist_prompt(agent, message)
+        elif agent.stage == BookingStage.PAYMENT:
             if payment_status == "success" or message.lower() == "payment_success":
-                return self._handle_payment_success(agent)
-            return {"response": "Please complete the payment to confirm your booking.", "session_id": agent.session_id, "stage": agent.stage.value}
-
-        if agent.stage == BookingStage.COMPLETE:
-            return {
+                res = self._handle_payment_success(agent)
+            else:
+                res = {"response": "Please complete the payment to confirm your booking.", "session_id": agent.session_id, "stage": agent.stage.value}
+        elif agent.stage == BookingStage.COMPLETE:
+            res = {
                 "response": "Your booking is already complete. If you need to cancel, please use the cancellation link in your confirmation email.",
                 "session_id": agent.session_id,
                 "stage": agent.stage.value,
             }
+        else:
+            res = self._collect_information(agent, message)
 
-        return self._collect_information(agent, message)
+        await self.save_session_to_db(db, agent)
+        return res
 
     def _collect_information(self, agent: BookingAgent, message: str) -> Dict[str, Any]:
-        if agent.stage == BookingStage.NAME:
-            name = extract_name(message)
-            if name:
-                agent.data.name = name
-                agent.stage = BookingStage.EMAIL
-                response = f"Nice to meet you, {name}! What's your email address?"
-            else:
-                response = self._get_groq_fallback(
-                    message,
-                    "The user is trying to provide their name but it's not recognized as a valid name. "
-                    "Politely ask them to provide their full name (e.g., John Doe). Keep it brief."
-                )
-            agent.add_message("assistant", response)
-            return {"response": response, "session_id": agent.session_id, "stage": agent.stage.value}
+        # 1. Run LLM-based entity extraction as a primary pass
+        extracted = {}
+        if groq_client:
+            extracted = extract_entities_with_llm(message)
+            
+        # 2. Update agent data from LLM extraction
+        if extracted.get("name") and not agent.data.name:
+            agent.data.name = extracted["name"].title()
+        if extracted.get("email") and not agent.data.email:
+            from .nlp import validate_email
+            if validate_email(extracted["email"]):
+                agent.data.email = extracted["email"].lower()
+        if extracted.get("phone") and not agent.data.phone:
+            from .nlp import validate_phone
+            if validate_phone(extracted["phone"]):
+                agent.data.phone = extracted["phone"]
 
-        if agent.stage == BookingStage.EMAIL:
+        # 3. Fallback/Regex extraction for anything still missing
+        if not agent.data.email:
             email = extract_email(message)
             if email:
-                agent.data.email = email
-                agent.stage = BookingStage.PHONE
-                response = f"Got it! What's your phone number? (We'll only use it for appointment-related communications)"
-            else:
-                response = self._get_groq_fallback(
-                    message,
-                    "The user is trying to provide their email but it's not recognized as a valid email format. "
-                    "Politely ask them to provide a valid email address (e.g., name@example.com). Keep it brief."
-                )
-            agent.add_message("assistant", response)
-            return {"response": response, "session_id": agent.session_id, "stage": agent.stage.value}
+                agent.data.email = email.lower()
 
-        if agent.stage == BookingStage.PHONE:
+        if not agent.data.phone:
             phone = extract_phone(message)
             if phone:
                 agent.data.phone = phone
-                agent.stage = BookingStage.SLOT_SELECTION
-                response = "PERFECT! I'll now find the earliest available slot for you."
-                agent.context["search_slots"] = True
-            else:
-                response = self._get_groq_fallback(
-                    message,
-                    "The user is trying to provide their phone number but it's not recognized as valid. "
-                    "Politely ask them to provide their 10-digit phone number (e.g., 9876543210). Keep it brief."
-                )
-            agent.add_message("assistant", response)
-            return {"response": response, "session_id": agent.session_id, "stage": agent.stage.value}
 
-        return {"response": "Something went wrong. Please start again.", "session_id": agent.session_id, "stage": agent.stage.value}
+        if not agent.data.name:
+            name = extract_name_smart(message)
+            if name:
+                agent.data.name = name.title()
+
+        # 4. Determine current stage and response based on what is missing
+        if not agent.data.name:
+            agent.stage = BookingStage.NAME
+            instruction = (
+                "The user is booking an appointment but hasn't provided a valid full name. "
+                "Politely request their full name (e.g. John Doe). Do not ask for email or phone yet. "
+                "Keep the response brief."
+            )
+            response = self._get_groq_fallback(message, instruction)
+            
+        elif not agent.data.email:
+            agent.stage = BookingStage.EMAIL
+            instruction = (
+                f"The user's name is {agent.data.name}. Politely ask them to provide their email address "
+                f"so we can send appointment confirmations. Do not ask for name or phone. Keep the response brief."
+            )
+            response = self._get_groq_fallback(message, instruction)
+            
+        elif not agent.data.phone:
+            agent.stage = BookingStage.PHONE
+            instruction = (
+                f"The user has provided their name ({agent.data.name}) and email ({agent.data.email}). "
+                f"Politely ask them for their phone number for urgent notifications. Do not ask for name or email. Keep it brief."
+            )
+            response = self._get_groq_fallback(message, instruction)
+            
+        else:
+            # Everything is gathered! Move to slot selection.
+            agent.stage = BookingStage.SLOT_SELECTION
+            response = (
+                f"PERFECT! I've recorded your details:\n👤 Name: {agent.data.name}\n✉️ Email: {agent.data.email}\n📞 Phone: {agent.data.phone}\n\n"
+                f"I'll now find the earliest available slot for you."
+            )
+            agent.context["search_slots"] = True
+
+        agent.add_message("assistant", response)
+        return {"response": response, "session_id": agent.session_id, "stage": agent.stage.value}
 
     def _get_groq_fallback(self, user_message: str, instruction: str) -> str:
+        is_name_stage = "request their full name" in instruction or "ask them for their name" in instruction
+        is_email_stage = "provide their email" in instruction or "ask them for their email" in instruction
+        is_phone_stage = "phone number" in instruction
+        
         if not groq_client:
-            if "name" in instruction.lower():
+            if is_name_stage:
                 return "I didn't catch your name. Could you please tell me your full name?"
-            elif "email" in instruction.lower():
+            elif is_email_stage:
                 return "I couldn't find a valid email. Please enter your email address (e.g., name@example.com)"
-            elif "phone" in instruction.lower():
+            elif is_phone_stage:
                 return "I couldn't find a valid phone number. Please enter your 10-digit phone number."
             return "Please provide the requested information."
 
@@ -184,11 +307,11 @@ class BookingAgentService:
             return response.choices[0].message.content
         except Exception as e:
             logger.error(f"Groq API error: {e}")
-            if "name" in instruction.lower():
+            if is_name_stage:
                 return "I didn't catch your name. Could you please tell me your full name?"
-            elif "email" in instruction.lower():
+            elif is_email_stage:
                 return "I couldn't find a valid email. Please enter your email address (e.g., name@example.com)"
-            elif "phone" in instruction.lower():
+            elif is_phone_stage:
                 return "I couldn't find a valid phone number. Please enter your 10-digit phone number."
             return "Please provide the requested information."
 

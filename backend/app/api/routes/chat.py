@@ -32,7 +32,8 @@ async def chat_message(
     session_id = message.session_id
     message_text = message.message.strip().lower()
 
-    response_data = booking_agent_service.process_message(
+    response_data = await booking_agent_service.process_message(
+        db=db,
         message=message.message,
         session_id=session_id,
     )
@@ -40,7 +41,7 @@ async def chat_message(
     response_text = response_data.get("response", "")
 
     if response_data.get("stage") == "slot_selection" and response_data.get("session_id"):
-        agent = booking_agent_service.get_or_create_session(response_data["session_id"])
+        agent = await booking_agent_service.get_or_create_session_async(db, response_data["session_id"])
         agent.stage = "slot_selection"
 
         slot = await find_earliest_available_slot(db)
@@ -67,6 +68,7 @@ async def chat_message(
             )
 
             booking_agent_service.set_slot_info(agent, slot_info)
+            await booking_agent_service.save_session_to_db(db, agent)
 
             return ChatResponse(
                 response=response_text,
@@ -76,7 +78,7 @@ async def chat_message(
             )
 
     if response_data.get("action") == "redirect_payment" and response_data.get("session_id"):
-        agent = booking_agent_service.get_or_create_session(response_data["session_id"])
+        agent = await booking_agent_service.get_or_create_session_async(db, response_data["session_id"])
         slot_id = agent.data.confirmed_slot_id
 
         if slot_id:
@@ -92,36 +94,37 @@ async def chat_message(
 
                     new_slot = await find_earliest_available_slot(db)
                     if new_slot:
-                        await db.refresh(new_slot, ["doctor"])
-                        new_slot_date = new_slot.date.strftime("%A, %d %B %Y")
-                        new_slot_time = new_slot.start_time.strftime("%I:%M %p")
+                         await db.refresh(new_slot, ["doctor"])
+                         new_slot_date = new_slot.date.strftime("%A, %d %B %Y")
+                         new_slot_time = new_slot.start_time.strftime("%I:%M %p")
 
-                        new_slot_info = {
-                            "id": new_slot.id,
-                            "doctor_name": new_slot.doctor.name,
-                            "specialization": new_slot.doctor.specialization,
-                            "date": new_slot_date,
-                            "time": new_slot_time,
-                        }
+                         new_slot_info = {
+                             "id": new_slot.id,
+                             "doctor_name": new_slot.doctor.name,
+                             "specialization": new_slot.doctor.specialization,
+                             "date": new_slot_date,
+                             "time": new_slot_time,
+                         }
 
-                        booking_agent_service.set_slot_info(agent, new_slot_info)
+                         booking_agent_service.set_slot_info(agent, new_slot_info)
+                         await booking_agent_service.save_session_to_db(db, agent)
 
-                        expired_response["response"] = (
-                            "The previous slot is no longer available. I found a new earliest slot for you:\n\n"
-                            f"📅 {new_slot_date}\n"
-                            f"⏰ {new_slot_time}\n"
-                            f"👨‍⚕️ {new_slot.doctor.name} ({new_slot.doctor.specialization})\n\n"
-                            f"Type YES to confirm or CANCEL to cancel."
-                        )
-                        expired_response["action"] = "show_slot"
-                        expired_response["data"] = new_slot_info
+                         expired_response["response"] = (
+                             "The previous slot is no longer available. I found a new earliest slot for you:\n\n"
+                             f"📅 {new_slot_date}\n"
+                             f"⏰ {new_slot_time}\n"
+                             f"👨‍⚕️ {new_slot.doctor.name} ({new_slot.doctor.specialization})\n\n"
+                             f"Type YES to confirm or CANCEL to cancel."
+                         )
+                         expired_response["action"] = "show_slot"
+                         expired_response["data"] = new_slot_info
 
-                        return ChatResponse(
-                            response=expired_response["response"],
-                            session_id=agent.session_id,
-                            action=expired_response.get("action"),
-                            data=expired_response.get("data"),
-                        )
+                         return ChatResponse(
+                             response=expired_response["response"],
+                             session_id=agent.session_id,
+                             action=expired_response.get("action"),
+                             data=expired_response.get("data"),
+                         )
 
     return ChatResponse(
         response=response_text,

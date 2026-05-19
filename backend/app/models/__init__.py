@@ -8,6 +8,7 @@ from .models import (
     BookingStatus,
     PaymentStatus,
     UpgradationStatus,
+    ChatSession,
 )
 
 __all__ = [
@@ -20,4 +21,5 @@ __all__ = [
     "BookingStatus",
     "PaymentStatus",
     "UpgradationStatus",
+    "ChatSession",
 ]
