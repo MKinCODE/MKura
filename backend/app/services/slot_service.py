@@ -1,10 +1,43 @@
 from datetime import datetime, date, time, timedelta
 from typing import List, Optional, Tuple
-from sqlalchemy import select, and_, or_
+from sqlalchemy import select, and_, or_, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from ..models import Slot, Booking, WeeklySchedule, Doctor, SlotStatus, BookingStatus
 from ..core.config import settings
+
+
+def get_clinic_now() -> datetime:
+    from datetime import timezone, timedelta
+    ist = timezone(timedelta(hours=5, minutes=30))
+    return datetime.now(ist).replace(tzinfo=None)
+
+
+async def cleanup_past_empty_slots(db: AsyncSession):
+    now = get_clinic_now()
+    today = now.date()
+    current_time = now.time()
+
+    query_past_days = delete(Slot).where(
+        and_(
+            Slot.date < today,
+            Slot.status == SlotStatus.AVAILABLE
+        )
+    )
+    query_today_passed = delete(Slot).where(
+        and_(
+            Slot.date == today,
+            Slot.start_time <= current_time,
+            Slot.status == SlotStatus.AVAILABLE
+        )
+    )
+
+    try:
+        await db.execute(query_past_days)
+        await db.execute(query_today_passed)
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
 
 
 async def generate_slots_for_date(db: AsyncSession, doctor_id: int, target_date: date) -> List[Slot]:
@@ -55,6 +88,8 @@ async def generate_slots_for_date(db: AsyncSession, doctor_id: int, target_date:
 
 
 async def get_or_generate_slots(db: AsyncSession, doctor_id: int, target_date: date) -> List[Slot]:
+    await cleanup_past_empty_slots(db)
+
     query = select(Slot).where(
         and_(Slot.doctor_id == doctor_id, Slot.date == target_date)
     ).order_by(Slot.start_time)
@@ -65,12 +100,11 @@ async def get_or_generate_slots(db: AsyncSession, doctor_id: int, target_date: d
     if not slots:
         slots = await generate_slots_for_date(db, doctor_id, target_date)
 
-    # Filter out expired slots: past dates entirely, and past times on today
-    now = datetime.now()
+    now = get_clinic_now()
     today = now.date()
 
     if target_date < today:
-        return []  # Never return past-date slots
+        return []
 
     if target_date == today:
         current_time = now.time()
@@ -84,7 +118,9 @@ async def find_earliest_available_slot(
     doctor_id: Optional[int] = None,
     min_lead_time_minutes: int = 60,
 ) -> Optional[Slot]:
-    now = datetime.now()
+    await cleanup_past_empty_slots(db)
+
+    now = get_clinic_now()
     min_booking_time = now + timedelta(minutes=min_lead_time_minutes)
 
     cutoff_time = datetime.combine(min_booking_time.date(), datetime.min.time()).replace(
@@ -121,6 +157,51 @@ async def find_earliest_available_slot(
                 return slot
 
         current_date += timedelta(days=1)
+
+    # Edge case: No slots available in MAX_ADVANCE_BOOKING_DAYS. Generate a slot 1 hour in the future.
+    if doctors:
+        doc = doctors[0]
+        slot_dt = now + timedelta(hours=1)
+        minutes_to_add = (10 - slot_dt.minute % 10) % 10
+        slot_dt += timedelta(minutes=minutes_to_add)
+        slot_dt = slot_dt.replace(second=0, microsecond=0)
+
+        if slot_dt.hour < settings.CLINIC_OPEN_HOUR:
+            slot_dt = slot_dt.replace(hour=settings.CLINIC_OPEN_HOUR, minute=0)
+        elif slot_dt.hour >= settings.CLINIC_CLOSE_HOUR:
+            slot_dt = slot_dt + timedelta(days=1)
+            slot_dt = slot_dt.replace(hour=settings.CLINIC_OPEN_HOUR, minute=0)
+
+        existing_query = select(Slot).where(
+            and_(
+                Slot.doctor_id == doc.id,
+                Slot.date == slot_dt.date(),
+                Slot.start_time == slot_dt.time()
+            )
+        )
+        existing_result = await db.execute(existing_query)
+        existing_slot = existing_result.scalars().first()
+
+        if existing_slot:
+            if existing_slot.status == SlotStatus.AVAILABLE:
+                return existing_slot
+            slot_dt += timedelta(minutes=settings.SLOT_DURATION_MINUTES)
+
+        new_slot = Slot(
+            doctor_id=doc.id,
+            date=slot_dt.date(),
+            start_time=slot_dt.time(),
+            end_time=(slot_dt + timedelta(minutes=settings.SLOT_DURATION_MINUTES)).time(),
+            status=SlotStatus.AVAILABLE,
+        )
+        db.add(new_slot)
+        try:
+            await db.commit()
+            await db.refresh(new_slot, ["doctor"])
+            return new_slot
+        except Exception as e:
+            await db.rollback()
+            return None
 
     return None
 

@@ -21,7 +21,9 @@ async def get_available_slots(
     target_date: Optional[date] = None,
     db: AsyncSession = Depends(get_db),
 ):
-    today = date.today()
+    from app.services.slot_service import get_clinic_now
+    now = get_clinic_now()
+    today = now.date()
 
     if target_date:
         # Never return slots for past dates
@@ -30,7 +32,6 @@ async def get_available_slots(
         slots = await get_or_generate_slots(db, doctor_id or 1, target_date)
         return [s for s in slots if s.status == SlotStatus.AVAILABLE]
 
-    now = datetime.now()
     min_time = now + timedelta(minutes=settings.MIN_LEAD_TIME_MINUTES)
     slots = []
     current_date = max(min_time.date(), today)  # Never go before today

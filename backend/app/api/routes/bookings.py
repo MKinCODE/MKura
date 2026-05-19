@@ -212,11 +212,10 @@ async def get_doctor_slots_with_bookings(
     doctor: Doctor = Depends(get_current_doctor),
     db: AsyncSession = Depends(get_db),
 ):
-    from datetime import date, timedelta, time as dtime
-
-    start_date = date.today()
+    from app.services.slot_service import get_clinic_now
+    now = get_clinic_now()
+    start_date = now.date()
     end_date = start_date + timedelta(days=7)
-    now = datetime.now()
 
     slots_query = select(Slot).where(
         and_(

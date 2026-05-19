@@ -404,7 +404,8 @@ class BookingAgentService:
     def check_slot_valid(self, slot_id: int, slot_datetime: Optional[datetime] = None) -> bool:
         if slot_datetime is None:
             return True
-        return slot_datetime > datetime.now()
+        from app.services.slot_service import get_clinic_now
+        return slot_datetime > get_clinic_now()
 
     def prepare_slot_expired_response(self, agent: BookingAgent) -> Dict[str, Any]:
         agent.stage = BookingStage.SLOT_SELECTION

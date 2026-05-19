@@ -87,9 +87,9 @@ async def chat_message(
             slot = slot_result.scalar_one_or_none()
 
             if slot:
-                from datetime import datetime, time
+                from app.services.slot_service import get_clinic_now
                 slot_datetime = datetime.combine(slot.date, slot.start_time)
-                if slot_datetime <= datetime.now() or slot.is_booked:
+                if slot_datetime <= get_clinic_now() or slot.is_booked:
                     expired_response = booking_agent_service.prepare_slot_expired_response(agent)
 
                     new_slot = await find_earliest_available_slot(db)

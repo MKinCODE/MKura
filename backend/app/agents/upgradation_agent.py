@@ -40,7 +40,8 @@ async def offer_slot_to_waitlist(
     if not slot or slot.status != SlotStatus.AVAILABLE:
         return None
 
-    waitlist_patients = await find_waitlist_patients(db, slot.doctor_id, datetime.now())
+    from app.services.slot_service import get_clinic_now
+    waitlist_patients = await find_waitlist_patients(db, slot.doctor_id, get_clinic_now())
 
     if not waitlist_patients:
         return None
