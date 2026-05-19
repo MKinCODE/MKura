@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, MessageCircle, Send, Bot, User, Loader2 } from 'lucide-react'
 import { chatApi } from '../../services/api'
