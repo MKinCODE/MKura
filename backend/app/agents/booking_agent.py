@@ -204,6 +204,11 @@ class BookingAgentService:
         return res
 
     def _collect_information(self, agent: BookingAgent, message: str) -> Dict[str, Any]:
+        # Track what we had before extracting
+        had_name = bool(agent.data.name)
+        had_email = bool(agent.data.email)
+        had_phone = bool(agent.data.phone)
+
         # 1. Run LLM-based entity extraction as a primary pass
         extracted = {}
         if groq_client:
@@ -237,8 +242,13 @@ class BookingAgentService:
             if name:
                 agent.data.name = name.title()
 
+        # Track what we have now
+        has_name = bool(agent.data.name)
+        has_email = bool(agent.data.email)
+        has_phone = bool(agent.data.phone)
+
         # 4. Determine current stage and response based on what is missing
-        if not agent.data.name:
+        if not has_name:
             agent.stage = BookingStage.NAME
             instruction = (
                 "The user is booking an appointment but hasn't provided a valid full name. "
@@ -247,21 +257,27 @@ class BookingAgentService:
             )
             response = self._get_groq_fallback(message, instruction)
             
-        elif not agent.data.email:
+        elif not has_email:
             agent.stage = BookingStage.EMAIL
-            instruction = (
-                f"The user's name is {agent.data.name}. Politely ask them to provide their email address "
-                f"so we can send appointment confirmations. Do not ask for name or phone. Keep the response brief."
-            )
-            response = self._get_groq_fallback(message, instruction)
+            if not had_name:
+                response = f"Thank you, {agent.data.name}! Could you please provide your email address so we can send you appointment confirmations?"
+            else:
+                instruction = (
+                    f"The user's name is {agent.data.name}. Politely ask them to provide their email address "
+                    f"so we can send appointment confirmations. Do not ask for name or phone. Keep the response brief."
+                )
+                response = self._get_groq_fallback(message, instruction)
             
-        elif not agent.data.phone:
+        elif not has_phone:
             agent.stage = BookingStage.PHONE
-            instruction = (
-                f"The user has provided their name ({agent.data.name}) and email ({agent.data.email}). "
-                f"Politely ask them for their phone number for urgent notifications. Do not ask for name or email. Keep it brief."
-            )
-            response = self._get_groq_fallback(message, instruction)
+            if not had_email or not had_name:
+                response = f"Got it, thanks! To keep you updated on your appointments and for any urgent notifications, could you please share your phone number?"
+            else:
+                instruction = (
+                    f"The user has provided their name ({agent.data.name}) and email ({agent.data.email}). "
+                    f"Politely ask them for their phone number for urgent notifications. Do not ask for name or email. Keep it brief."
+                )
+                response = self._get_groq_fallback(message, instruction)
             
         else:
             # Everything is gathered! Move to slot selection.

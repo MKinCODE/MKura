@@ -4,10 +4,10 @@ from sqlalchemy import select, and_
 from typing import Optional, List
 
 from app.database import get_db
-from app.models import Slot, Doctor
+from app.models import Slot, Doctor, SlotStatus
 from app.schemas import ChatMessage, ChatResponse
 from app.services.slot_service import find_earliest_available_slot
-from app.agents.booking_agent import booking_agent_service
+from app.agents.booking_agent import booking_agent_service, BookingStage
 from app.core.rate_limit import check_rate_limit
 from app.core.config import settings
 from app.api.deps import get_current_doctor
@@ -42,7 +42,7 @@ async def chat_message(
 
     if response_data.get("stage") == "slot_selection" and response_data.get("session_id"):
         agent = await booking_agent_service.get_or_create_session_async(db, response_data["session_id"])
-        agent.stage = "slot_selection"
+        agent.stage = BookingStage.SLOT_SELECTION
 
         slot = await find_earliest_available_slot(db)
 
@@ -87,9 +87,10 @@ async def chat_message(
             slot = slot_result.scalar_one_or_none()
 
             if slot:
+                from datetime import datetime
                 from app.services.slot_service import get_clinic_now
                 slot_datetime = datetime.combine(slot.date, slot.start_time)
-                if slot_datetime <= get_clinic_now() or slot.is_booked:
+                if slot_datetime <= get_clinic_now() or slot.status != SlotStatus.AVAILABLE:
                     expired_response = booking_agent_service.prepare_slot_expired_response(agent)
 
                     new_slot = await find_earliest_available_slot(db)
@@ -125,6 +126,13 @@ async def chat_message(
                              action=expired_response.get("action"),
                              data=expired_response.get("data"),
                          )
+                else:
+                    return ChatResponse(
+                        response=response_text,
+                        session_id=agent.session_id,
+                        action="redirect_payment",
+                        data=response_data.get("data"),
+                    )
 
     return ChatResponse(
         response=response_text,

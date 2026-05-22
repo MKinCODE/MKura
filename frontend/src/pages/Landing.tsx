@@ -135,7 +135,10 @@ function TestimonialCarousel() {
                 opacity: style.opacity,
                 filter: style.filter,
               }}
-              transition={{ type: "spring", stiffness: 200, damping: 25 }}
+              transition={{
+                default: { type: "spring", stiffness: 200, damping: 25 },
+                filter: { type: "tween", duration: 0.3 }
+              }}
               onClick={() => setActiveIndex(index)}
               style={{ zIndex: style.zIndex }}
             >

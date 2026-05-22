@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 from typing import List, Optional
@@ -70,6 +70,7 @@ async def create_booking(
 @router.post("/{booking_id}/confirm-payment")
 async def confirm_payment(
     booking_id: int,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ):
     booking_query = select(Booking).where(Booking.id == booking_id).options()
@@ -104,7 +105,8 @@ async def confirm_payment(
         clinic_phone=settings.CLINIC_PHONE,
     )
 
-    await send_email(
+    background_tasks.add_task(
+        send_email,
         to_email=booking.patient_email,
         subject="Appointment Confirmed - MK Health Clinic",
         html_content=html,
@@ -148,6 +150,7 @@ async def validate_cancellation_token(
 async def cancel_booking(
     booking_id: int,
     token: str,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
 ):
     booking_query = select(Booking).where(
@@ -178,7 +181,8 @@ async def cancel_booking(
     await db.commit()
 
     html = get_cancellation_confirmed_html(booking.patient_name)
-    await send_email(
+    background_tasks.add_task(
+        send_email,
         to_email=booking.patient_email,
         subject="Appointment Cancelled - MK Health Clinic",
         html_content=html,
