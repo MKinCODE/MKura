@@ -113,7 +113,7 @@ async def block_slot(
         )
         await send_email(
             to_email=booking.patient_email,
-            subject="Appointment Rescheduled - MK Health Clinic",
+            subject="[MK Health Clinic] Appointment Rescheduled",
             html_content=html,
         )
         return {"message": "Slot blocked. Patient has been rescheduled.", "rescheduled": True}
@@ -132,7 +132,7 @@ async def block_slot(
         )
         await send_email(
             to_email=booking.patient_email,
-            subject="Appointment Cancelled - MK Health Clinic",
+            subject="[MK Health Clinic] Appointment Cancelled",
             html_content=html,
         )
         return {"message": "Slot blocked. Patient has been notified.", "rescheduled": False, "cancelled": True}

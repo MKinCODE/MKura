@@ -25,11 +25,8 @@ class Settings(BaseSettings):
     PAYMENT_AMOUNT_INR: int = 100
     DEMO_MODE: bool = True
 
-    SMTP_HOST: str = "smtp.gmail.com"
-    SMTP_PORT: int = 587
-    SMTP_USER: str = "your-email@gmail.com"
-    SMTP_PASSWORD: str = "your-app-password"
-    SMTP_FROM_EMAIL: str = "MK Health Clinic <noreply@mkhealthclinic.com>"
+    RESEND_API_KEY: str = ""
+    FROM_EMAIL: str = "MK Health Clinic <onboarding@resend.dev>"
 
     CLINIC_NAME: str = "MK Health Clinic"
     CLINIC_ADDRESS: str = "Sector 21, Gandhinagar, Jaipur, Rajasthan 302015"

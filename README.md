@@ -31,7 +31,7 @@ sequenceDiagram
     participant Chat as AI Chat Agent (Groq)
     participant DB as PostgreSQL (DB)
     participant UpStash as Redis (Cache/Rate-Limits)
-    participant Email as SMTP Server (SMTP)
+    participant Email as Resend API (Email)
 
     Patient->>Chat: "Book a slot for tomorrow morning"
     Chat->>UpStash: Check Rate-Limiting & Session State
@@ -56,7 +56,7 @@ sequenceDiagram
 | **Database ORM** | `PostgreSQL 15` + `SQLAlchemy (Asyncio)` | Robust relational storage with asynchronous engine execution, ensuring non-blocking PostgreSQL connection pooling. |
 | **Cache & Middleware** | `Redis 7` | Ultra-fast key-value store handling low-latency API rate-limiting and session synchronization. |
 | **Generative AI** | `Groq SDK (Llama 3 70B)` | Sub-second inference latency, allowing natural conversational flows and seamless token extraction. |
-| **Asynchronous Mailer** | `aiosmtplib` | Modern SMTP client ensuring notification dispatches don't block main threat event loops. |
+| **Transactional Email** | `Resend SDK` | Modern API-based email delivery, eliminating SMTP port/firewall issues on cloud platforms like Render. |
 
 ---
 
@@ -78,7 +78,7 @@ Multi-agent-clinic-scheduler/
 │   │   ├── core/                    # App configurations, secrets, and Redis rate limiters
 │   │   ├── models/                  # Database relational models (Doctor, Slot, Booking, Waitlist)
 │   │   ├── schemas/                 # Strongly-typed input/output Pydantic structures
-│   │   ├── services/                # Asynchronous helper services (SMTP, Slot seeder)
+│   │   ├── services/                # Asynchronous helper services (Resend Email, Slot seeder)
 │   │   └── main.py                  # Lifespan initializer and CORS configurations
 │   ├── requirements.txt             # Python backend dependencies manifest
 │   └── seed_data.py                 # Seeds clinic calendar and default Doctor accounts

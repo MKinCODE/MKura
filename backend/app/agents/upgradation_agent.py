@@ -67,7 +67,7 @@ async def offer_slot_to_waitlist(
 
     html = get_upgradation_offer_html(
         patient_name=patient.patient_name,
-        doctor_name="Dr. Vikram Mehta",
+        doctor_name=slot.doctor.name if slot.doctor else "Dr. Mousam",
         date=slot_date,
         time=slot_time,
         accept_link=accept_link,
@@ -77,7 +77,7 @@ async def offer_slot_to_waitlist(
 
     await send_email(
         to_email=patient.patient_email,
-        subject="Earlier Slot Available - MK Health Clinic",
+        subject="[MK Health Clinic] Earlier Slot Available!",
         html_content=html,
     )
 

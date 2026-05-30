@@ -3,11 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { MapPin, Phone, Mail, Clock, Award, Shield, ChevronDown, Star, ArrowRight, MessageCircle, ChevronLeft, ChevronRight } from 'lucide-react'
 
 const testimonials = [
-  { name: 'Priya Sharma', location: 'Jaipur', text: 'Dr. Mehta is very thorough. The AI booking was so convenient!', rating: 5 },
+  { name: 'Priya Sharma', location: 'Jaipur', text: 'Dr. Mousam is very thorough. The AI booking was so convenient!', rating: 5 },
   { name: 'Rajesh Agarwal', location: 'Ajmer', text: 'Excellent diagnosis. Booked my appointment through the chat in under 2 minutes.', rating: 5 },
   { name: 'Sunita Jain', location: 'Udaipur', text: 'The waitlist feature got me an earlier slot when someone cancelled. Amazing!', rating: 5 },
   { name: 'Mohan Lal', location: 'Jodhpur', text: 'Quick appointment booking and minimal waiting time. Great experience!', rating: 5 },
-  { name: 'Kavita Rathore', location: 'Kota', text: 'Dr. Mehta treated my diabetes effectively. Follow-up reminders are very helpful.', rating: 5 },
+  { name: 'Kavita Rathore', location: 'Kota', text: 'Dr. Mousam treated my diabetes effectively. Follow-up reminders are very helpful.', rating: 5 },
 ]
 
 const faqs = [
@@ -306,11 +306,11 @@ export default function Landing() {
             <div className="bg-white border border-surface-300 rounded-3xl p-6 lg:p-10 shadow-sm">
               <div className="grid lg:grid-cols-2 gap-10 items-center">
                 <div className="relative">
-                  <img src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=500&h=600&fit=crop" alt="Dr. Vikram Mehta" className="w-full rounded-2xl" />
+                  <img src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=500&h=600&fit=crop" alt="Dr. Mousam" className="w-full rounded-2xl" />
                   <div className="absolute -bottom-4 left-4 right-4 bg-primary-800 text-white text-center py-3 rounded-xl font-semibold text-sm shadow-md">15+ Years Experience</div>
                 </div>
                 <div>
-                  <h3 className="font-display text-3xl font-bold text-text-900 mb-2">Dr. Vikram Mehta</h3>
+                  <h3 className="font-display text-3xl font-bold text-text-900 mb-2">Dr. Mousam</h3>
                   <p className="text-primary-700 font-semibold mb-6">General Physician & Internal Medicine</p>
                   <div className="space-y-5 mb-8">
                     <div className="flex items-start gap-4"><div className="p-2 bg-amber-50 rounded-lg"><Award className="w-5 h-5 text-amber-500 flex-shrink-0" /></div><div><div className="text-text-900 font-medium">Degrees & Certifications</div><div className="text-text-500 text-sm mt-1">MBBS (AIIMS Delhi), MD (Medicine), FIACM</div></div></div>
@@ -394,7 +394,7 @@ export default function Landing() {
               {[
                 { icon: MapPin, title: 'Address', text: 'Sector 21, Gandhinagar, Jaipur, Rajasthan 302015' },
                 { icon: Phone, title: 'Phone', text: '+91 98765 43210' },
-                { icon: Mail, title: 'Email', text: 'dr.mehta@mkhealth.com' },
+                { icon: Mail, title: 'Email', text: 'dr.mousam@mkhealth.com' },
               ].map((item, idx) => (
                 <FadeInUp key={idx} delay={idx * 0.1}>
                   <div className="flex items-start gap-5">

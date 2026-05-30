@@ -108,7 +108,7 @@ async def confirm_payment(
     background_tasks.add_task(
         send_email,
         to_email=booking.patient_email,
-        subject="Appointment Confirmed - MK Health Clinic",
+        subject="[MK Health Clinic] Appointment Confirmed",
         html_content=html,
     )
 
@@ -184,7 +184,7 @@ async def cancel_booking(
     background_tasks.add_task(
         send_email,
         to_email=booking.patient_email,
-        subject="Appointment Cancelled - MK Health Clinic",
+        subject="[MK Health Clinic] Appointment Cancelled",
         html_content=html,
     )
 
