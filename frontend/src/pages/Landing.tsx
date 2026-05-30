@@ -179,9 +179,8 @@ function TestimonialCarousel() {
             <button
               key={idx}
               onClick={() => setActiveIndex(idx)}
-              className={`h-2 rounded-full transition-all duration-300 ${
-                idx === activeIndex ? 'w-8 bg-primary-700' : 'w-2 bg-surface-300 hover:bg-surface-400'
-              }`}
+              className={`h-2 rounded-full transition-all duration-300 ${idx === activeIndex ? 'w-8 bg-primary-700' : 'w-2 bg-surface-300 hover:bg-surface-400'
+                }`}
               aria-label={`Go to testimonial ${idx + 1}`}
             />
           ))}
@@ -246,10 +245,6 @@ export default function Landing() {
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             <FadeInUp>
-              <div className="inline-flex items-center gap-2 bg-primary-200/60 border border-primary-400/40 rounded-full px-4 py-1.5 mb-6">
-                <span className="w-2 h-2 bg-primary-700 rounded-full animate-pulse" />
-                <span className="text-primary-900 text-sm font-medium">Accepting New Patients</span>
-              </div>
               <h1 className="font-display text-4xl sm:text-5xl lg:text-[56px] font-bold text-text-900 leading-[1.1] mb-6">
                 MK Health<br />Clinic in <span className="text-primary-800">Jaipur</span>
               </h1>
@@ -270,13 +265,13 @@ export default function Landing() {
                 ))}
               </div>
             </FadeInUp>
-            
+
             <motion.div initial={{ opacity: 0, scale: 0.9, x: 20 }} animate={{ opacity: 1, scale: 1, x: 0 }} transition={{ duration: 0.7, delay: 0.2 }} className="relative">
               <div className="relative z-10">
-                <img src="https://images.unsplash.com/photo-1631217868264-e5b90bb7e133?w=600&h=700&fit=crop" alt="MK Health Clinic" className="w-full rounded-2xl shadow-xl object-cover" />
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }} 
-                  animate={{ opacity: 1, y: 0 }} 
+                <img src="/Clinic.png" alt="MK Health Clinic" className="w-full rounded-2xl shadow-xl object-cover" />
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.8, type: "spring" }}
                   className="absolute -bottom-5 -left-5 bg-white border border-surface-300 rounded-xl p-4 shadow-lg"
                 >
@@ -301,7 +296,7 @@ export default function Landing() {
               <div className="w-16 h-1 bg-primary-700 mx-auto rounded-full" />
             </div>
           </FadeInUp>
-          
+
           <FadeInUp delay={0.2}>
             <div className="bg-white border border-surface-300 rounded-3xl p-6 lg:p-10 shadow-sm">
               <div className="grid lg:grid-cols-2 gap-10 items-center">
@@ -336,7 +331,7 @@ export default function Landing() {
               <div className="w-16 h-1 bg-primary-700 mx-auto rounded-full" />
             </div>
           </FadeInUp>
-          
+
           <FadeInUp delay={0.2}>
             <TestimonialCarousel />
           </FadeInUp>
