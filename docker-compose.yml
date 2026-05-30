@@ -39,7 +39,10 @@ services:
       REDIS_URL: redis://redis:6379/0
       SECRET_KEY: your-super-secret-key-change-in-production
       GROQ_API_KEY: ${GROQ_API_KEY}
-      RESEND_API_KEY: ${RESEND_API_KEY}
+      GMAIL_CLIENT_ID: ${GMAIL_CLIENT_ID}
+      GMAIL_CLIENT_SECRET: ${GMAIL_CLIENT_SECRET}
+      GMAIL_REFRESH_TOKEN: ${GMAIL_REFRESH_TOKEN}
+      GMAIL_SENDER_EMAIL: ${GMAIL_SENDER_EMAIL}
       CLIENT_URL: http://localhost:3000
     depends_on:
       postgres:

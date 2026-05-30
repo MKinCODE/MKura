@@ -25,8 +25,10 @@ class Settings(BaseSettings):
     PAYMENT_AMOUNT_INR: int = 100
     DEMO_MODE: bool = True
 
-    RESEND_API_KEY: str = ""
-    FROM_EMAIL: str = "MK Health Clinic <onboarding@resend.dev>"
+    GMAIL_CLIENT_ID: str = ""
+    GMAIL_CLIENT_SECRET: str = ""
+    GMAIL_REFRESH_TOKEN: str = ""
+    GMAIL_SENDER_EMAIL: str = ""
 
     CLINIC_NAME: str = "MK Health Clinic"
     CLINIC_ADDRESS: str = "Sector 21, Gandhinagar, Jaipur, Rajasthan 302015"

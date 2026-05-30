@@ -1,10 +1,26 @@
 from datetime import datetime
 from typing import Optional
-import resend
+import base64
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+import httpx
 from ..core.config import settings
 
-# Configure Resend API key at module level
-resend.api_key = settings.RESEND_API_KEY
+
+async def get_gmail_access_token() -> str:
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "https://oauth2.googleapis.com/token",
+            data={
+                "client_id": settings.GMAIL_CLIENT_ID,
+                "client_secret": settings.GMAIL_CLIENT_SECRET,
+                "refresh_token": settings.GMAIL_REFRESH_TOKEN,
+                "grant_type": "refresh_token",
+            },
+            timeout=10.0
+        )
+        response.raise_for_status()
+        return response.json()["access_token"]
 
 
 async def send_email(
@@ -14,20 +30,38 @@ async def send_email(
     text_content: Optional[str] = None,
 ):
     try:
-        params: resend.Emails.SendParams = {
-            "from": settings.FROM_EMAIL,
-            "to": [to_email],
-            "subject": subject,
-            "html": html_content,
-        }
-        if text_content:
-            params["text"] = text_content
+        # Fetch fresh access token via refresh token flow
+        access_token = await get_gmail_access_token()
 
-        email = resend.Emails.send(params)
-        print(f"Email sent successfully via Resend: {email.get('id', 'unknown')}")
-        return True
+        # Build standard MIME message
+        message = MIMEMultipart("alternative")
+        message["From"] = f"{settings.CLINIC_NAME} <{settings.GMAIL_SENDER_EMAIL}>"
+        message["To"] = to_email
+        message["Subject"] = subject
+
+        if text_content:
+            message.attach(MIMEText(text_content, "plain"))
+        message.attach(MIMEText(html_content, "html"))
+
+        # Raw URL-safe base64 encoding required by Gmail API REST endpoint
+        raw_message = base64.urlsafe_b64encode(message.as_bytes()).decode("utf-8")
+
+        # Send via Gmail HTTP API (bypasses closed SMTP ports on Render free tier)
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://gmail.googleapis.com/gmail/v1/users/me/messages/send",
+                headers={
+                    "Authorization": f"Bearer {access_token}",
+                    "Content-Type": "application/json",
+                },
+                json={"raw": raw_message},
+                timeout=10.0
+            )
+            response.raise_for_status()
+            print(f"Email sent successfully via Gmail API to {to_email}")
+            return True
     except Exception as e:
-        print(f"Email sending failed: {e}")
+        print(f"Email sending failed via Gmail API: {e}")
         return False
 
 

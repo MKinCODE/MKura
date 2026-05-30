@@ -77,7 +77,7 @@ async def offer_slot_to_waitlist(
 
     await send_email(
         to_email=patient.patient_email,
-        subject="[MK Health Clinic] Earlier Slot Available!",
+        subject="Earlier Slot Available - MK Health Clinic",
         html_content=html,
     )
 
