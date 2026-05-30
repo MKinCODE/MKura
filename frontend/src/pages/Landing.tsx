@@ -246,7 +246,7 @@ export default function Landing() {
           <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
             <FadeInUp>
               <h1 className="font-display text-4xl sm:text-5xl lg:text-[56px] font-bold text-text-900 leading-[1.1] mb-6">
-                MK Health<br />Clinic in <span className="text-primary-800">Jaipur</span>
+                MK Health Clinic
               </h1>
               <p className="text-lg text-text-500 mb-8 leading-relaxed max-w-lg">
                 Experience personalized healthcare with AI-powered appointment booking. Chat with MKura, our assistant, to find the earliest available slot in seconds.
