@@ -231,6 +231,8 @@ export default function Landing() {
             </div>
           </div>
           <div className="hidden md:flex items-center gap-8">
+            <a href="#how-it-works" className="text-text-700 hover:text-primary-800 transition-colors text-sm font-medium">How It Works</a>
+            <a href="#services" className="text-text-700 hover:text-primary-800 transition-colors text-sm font-medium">Services</a>
             <a href="#about" className="text-text-700 hover:text-primary-800 transition-colors text-sm font-medium">About</a>
             <a href="#testimonials" className="text-text-700 hover:text-primary-800 transition-colors text-sm font-medium">Reviews</a>
             <a href="#faq" className="text-text-700 hover:text-primary-800 transition-colors text-sm font-medium">FAQ</a>
@@ -287,6 +289,224 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* How It Works */}
+      <section id="how-it-works" className="py-24 bg-surface-100/50 border-y border-surface-200">
+        <div className="max-w-7xl mx-auto px-6">
+          <FadeInUp>
+            <div className="text-center mb-16">
+              <p className="text-primary-700 font-semibold text-sm uppercase tracking-wider mb-3">AI-Powered Scheduling</p>
+              <h2 className="font-display text-3xl sm:text-4xl font-bold text-text-900 mb-4">Booking Has Never Been Easier</h2>
+              <div className="w-16 h-1 bg-primary-700 mx-auto rounded-full mb-4" />
+              <p className="text-text-500 max-w-2xl mx-auto">Meet MKura, our intelligent multi-agent healthcare assistant that simplifies scheduling into a simple 2-minute conversation.</p>
+            </div>
+          </FadeInUp>
+
+          <div className="grid lg:grid-cols-12 gap-12 items-center">
+            {/* Steps - Left Side */}
+            <div className="lg:col-span-5 space-y-10">
+              {[
+                {
+                  step: '01',
+                  title: 'Chat with MKura',
+                  desc: 'Click the chat bubble at the bottom right. Share your name, contact details, and your preferred appointment time in natural everyday language.',
+                  color: 'bg-primary-100 text-primary-800'
+                },
+                {
+                  step: '02',
+                  title: 'Instant Scheduling Match',
+                  desc: 'Our multi-agent scheduling backend queries live doctor calendar slots, matching your availability in seconds with zero hold time.',
+                  color: 'bg-amber-100 text-amber-800'
+                },
+                {
+                  step: '03',
+                  title: 'Secure & Confirm',
+                  desc: 'Complete a refundable ₹100 deposit to secure your slot. You will instantly receive an email confirmation and Google Calendar invitation.',
+                  color: 'bg-emerald-100 text-emerald-800 font-medium'
+                }
+              ].map((item, idx) => (
+                <FadeInUp key={idx} delay={idx * 0.15}>
+                  <div className="flex gap-5">
+                    <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg flex-shrink-0 shadow-sm ${item.color}`}>
+                      {item.step}
+                    </div>
+                    <div>
+                      <h3 className="font-display font-bold text-text-900 text-xl mb-2">{item.title}</h3>
+                      <p className="text-text-500 leading-relaxed text-sm">{item.desc}</p>
+                    </div>
+                  </div>
+                </FadeInUp>
+              ))}
+            </div>
+
+            {/* Stylized Chat Mockup - Right Side */}
+            <div className="lg:col-span-7">
+              <FadeInUp delay={0.3}>
+                <div className="bg-white border border-surface-300 rounded-[2rem] shadow-xl overflow-hidden max-w-lg mx-auto">
+                  {/* Mockup Header */}
+                  <div className="bg-primary-900 px-6 py-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-9 h-9 bg-primary-800 rounded-full flex items-center justify-center text-white font-bold text-sm relative">
+                        MK
+                        <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 border-2 border-primary-900 rounded-full animate-pulse"></span>
+                      </div>
+                      <div>
+                        <h4 className="text-white font-semibold text-sm">MKura Assistant</h4>
+                        <span className="text-[10px] text-primary-300">Live Booking Agent</span>
+                      </div>
+                    </div>
+                    <div className="flex gap-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-primary-700"></span>
+                      <span className="w-2.5 h-2.5 rounded-full bg-primary-700"></span>
+                      <span className="w-2.5 h-2.5 rounded-full bg-primary-700"></span>
+                    </div>
+                  </div>
+
+                  {/* Mockup Body */}
+                  <div className="p-6 bg-slate-50 space-y-4 text-xs h-[300px] overflow-y-auto text-left">
+                    <div className="flex items-start gap-2.5">
+                      <div className="w-7 h-7 bg-primary-100 rounded-lg flex items-center justify-center text-primary-800 font-bold text-xs flex-shrink-0">MK</div>
+                      <div className="bg-white border border-surface-200 p-3 rounded-2xl rounded-tl-none max-w-[80%] text-text-700 leading-relaxed shadow-sm">
+                        Hello! I am MKura, your medical assistant. Let's get you booked. What is your preferred date or timing for your checkup?
+                      </div>
+                    </div>
+
+                    <div className="flex items-start justify-end gap-2.5">
+                      <div className="bg-primary-800 text-white p-3 rounded-2xl rounded-tr-none max-w-[80%] leading-relaxed shadow-sm">
+                        I need a routine physical checkup with Dr. Mousam this Tuesday afternoon if possible.
+                      </div>
+                    </div>
+
+                    <div className="flex items-start gap-2.5">
+                      <div className="w-7 h-7 bg-primary-100 rounded-lg flex items-center justify-center text-primary-800 font-bold text-xs flex-shrink-0">MK</div>
+                      <div className="bg-white border border-surface-200 p-3 rounded-2xl rounded-tl-none max-w-[80%] text-text-700 leading-relaxed shadow-sm space-y-2">
+                        <p>I found an available slot this Tuesday at 2:20 PM with Dr. Mousam.</p>
+                        <p className="font-semibold text-primary-800">🗓️ Tuesday (June 9) at 2:20 PM - 2:40 PM</p>
+                        <p>Would you like me to hold this slot and collect your registration details?</p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-start justify-end gap-2.5">
+                      <div className="bg-primary-800 text-white p-3 rounded-2xl rounded-tr-none max-w-[80%] leading-relaxed shadow-sm">
+                        Yes, that time is perfect. My name is Amit Sen.
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Mockup Input bar */}
+                  <div className="px-6 py-4 bg-white border-t border-surface-200 flex items-center justify-between gap-3">
+                    <div className="bg-slate-100 text-text-300 text-xs px-4 py-2.5 rounded-xl flex-grow text-left">
+                      Type your message here...
+                    </div>
+                    <div className="w-9 h-9 bg-primary-800 rounded-xl flex items-center justify-center text-white font-bold cursor-pointer hover:bg-primary-700 transition-colors shadow-md">
+                      →
+                    </div>
+                  </div>
+                </div>
+              </FadeInUp>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Why Choose Us */}
+      <section className="py-24 bg-white overflow-hidden">
+        <div className="max-w-7xl mx-auto px-6">
+          <FadeInUp>
+            <div className="text-center mb-16">
+              <p className="text-primary-700 font-semibold text-sm uppercase tracking-wider mb-3">Value Proposition</p>
+              <h2 className="font-display text-3xl sm:text-4xl font-bold text-text-900 mb-4">Why Choose MK Health Clinic?</h2>
+              <div className="w-16 h-1 bg-primary-700 mx-auto rounded-full" />
+            </div>
+          </FadeInUp>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 text-left">
+            {[
+              {
+                icon: MessageCircle,
+                title: '24/7 Smart Booking',
+                desc: 'Skip hold music and front desk call queues. Chat directly with MKura anytime, day or night, and finalize your booking in seconds.',
+              },
+              {
+                icon: Award,
+                title: 'Board-Certified Care',
+                desc: 'Consult directly with Dr. Mousam, an expert practitioner trained at AIIMS Delhi with over 15 years of specialized clinical experience.',
+              },
+              {
+                icon: Shield,
+                title: 'Waitlist Priority Engine',
+                desc: 'Our active multi-agent system automatically tracks cancellations in real-time, offering newly freed slots to waitlisted patients.',
+              },
+              {
+                icon: Clock,
+                title: 'Zero Wait-Time Sync',
+                desc: 'Smart calendar synchronization and strict 20-minute doctor slots ensure your appointment starts exactly when scheduled.',
+              },
+            ].map((prop, idx) => (
+              <FadeInUp key={idx} delay={idx * 0.1}>
+                <div className="bg-surface-100 hover:bg-white border border-surface-200 hover:border-primary-400 p-8 rounded-3xl transition-all duration-300 hover:shadow-lg group h-full flex flex-col justify-between">
+                  <div>
+                    <div className="w-12 h-12 bg-primary-100 group-hover:bg-primary-800 text-primary-800 group-hover:text-white rounded-2xl flex items-center justify-center mb-6 transition-all duration-300">
+                      <prop.icon className="w-6 h-6" />
+                    </div>
+                    <h3 className="font-display font-bold text-text-900 text-lg mb-3">{prop.title}</h3>
+                    <p className="text-text-500 leading-relaxed text-sm">{prop.desc}</p>
+                  </div>
+                </div>
+              </FadeInUp>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Medical Services */}
+      <section id="services" className="py-24 bg-surface-100 border-y border-surface-200">
+        <div className="max-w-7xl mx-auto px-6">
+          <FadeInUp>
+            <div className="text-center mb-16">
+              <p className="text-primary-700 font-semibold text-sm uppercase tracking-wider mb-3">Clinical Specialties</p>
+              <h2 className="font-display text-3xl sm:text-4xl font-bold text-text-900 mb-4">Our Medical Services</h2>
+              <div className="w-16 h-1 bg-primary-700 mx-auto rounded-full mb-4" />
+              <p className="text-text-500 max-w-xl mx-auto">Providing comprehensive primary care services and clinical coordination tailored for you and your family.</p>
+            </div>
+          </FadeInUp>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-8 text-left">
+            {[
+              {
+                title: 'General Medicine',
+                desc: 'Routine wellness assessments, acute illness treatment, chronic condition monitoring (diabetes, thyroid), and health counseling.',
+                icon: '🩺'
+              },
+              {
+                title: 'Preventive Screenings',
+                desc: 'Preventive blood panels, blood pressure evaluation, metabolic profiles, and periodic checks to catch issues early.',
+                icon: '🔬'
+              },
+              {
+                title: 'Diagnostic Referrals',
+                desc: 'Coordinated lab testing, radiology referrals, and follow-up medical reviews for comprehensive care oversight.',
+                icon: '📋'
+              },
+              {
+                title: 'Pediatric Consultation',
+                desc: 'General pediatric consultations, immunization advice, growth chart tracking, and standard wellness checkups.',
+                icon: '🧸'
+              }
+            ].map((svc, idx) => (
+              <FadeInUp key={idx} delay={idx * 0.1}>
+                <div className="bg-white border border-surface-200 p-8 rounded-3xl shadow-sm hover:shadow-md hover:border-primary-600/30 transition-all duration-300 h-full flex flex-col justify-between">
+                  <div>
+                    <span className="text-4xl block mb-6">{svc.icon}</span>
+                    <h3 className="font-display font-bold text-text-900 text-lg mb-3">{svc.title}</h3>
+                    <p className="text-text-500 leading-relaxed text-sm">{svc.desc}</p>
+                  </div>
+                </div>
+              </FadeInUp>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Doctor */}
       <section id="about" className="py-24 bg-surface-100 overflow-hidden">
         <div className="max-w-7xl mx-auto px-6">
@@ -301,7 +521,7 @@ export default function Landing() {
             <div className="bg-white border border-surface-300 rounded-3xl p-6 lg:p-10 shadow-sm">
               <div className="grid lg:grid-cols-2 gap-10 items-center">
                 <div className="relative">
-                  <img src="https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=500&h=600&fit=crop" alt="Dr. Mousam" className="w-full rounded-2xl" />
+                  <img src="./Doctor.png" alt="Dr. Mousam" className="w-full rounded-2xl" />
                   <div className="absolute -bottom-4 left-4 right-4 bg-primary-800 text-white text-center py-3 rounded-xl font-semibold text-sm shadow-md">15+ Years Experience</div>
                 </div>
                 <div>
@@ -312,7 +532,16 @@ export default function Landing() {
                     <div className="flex items-start gap-4"><div className="p-2 bg-primary-50 rounded-lg"><Shield className="w-5 h-5 text-primary-700 flex-shrink-0" /></div><div><div className="text-text-900 font-medium">Awards</div><div className="text-text-500 text-sm mt-1">Best Physician Award 2022 (IJCP), Health Excellence Award 2023</div></div></div>
                     <div className="flex items-start gap-4"><div className="p-2 bg-primary-50 rounded-lg"><Clock className="w-5 h-5 text-primary-700 flex-shrink-0" /></div><div><div className="text-text-900 font-medium">Clinic Hours</div><div className="text-text-500 text-sm mt-1">Mon – Sat: 9:00 AM – 6:00 PM</div></div></div>
                   </div>
-                  <p className="text-text-500 leading-relaxed mb-8 border-l-4 border-primary-200 pl-4 italic">"Committed to providing personalized healthcare with a patient-first approach. Specialized in diabetes, hypertension, and preventive health checkups."</p>
+                  <p className="text-text-500 leading-relaxed mb-6 border-l-4 border-primary-200 pl-4 italic">"Committed to providing personalized healthcare with a patient-first approach. Specialized in diabetes, hypertension, and preventive health checkups."</p>
+
+                  {/* Specialist Network Reference */}
+                  <div className="mb-8 p-4 bg-slate-50 border border-slate-200 rounded-2xl text-xs text-text-700 text-left">
+                    <p className="font-semibold text-primary-900 mb-1">🔗 Affiliated Specialist Network</p>
+                    <p className="leading-relaxed">
+                      For advanced cardiology interventions, specialized pediatric surgeries, and orthopedics, Dr. Mousam coordinates direct referrals to our partner network of top specialists in Jaipur, ensuring seamless care continuity.
+                    </p>
+                  </div>
+
                   <a href="#book" onClick={openChat} className="inline-flex items-center gap-2 bg-primary-800 hover:bg-primary-700 text-white px-7 py-3.5 rounded-xl font-semibold transition-colors shadow-md hover:shadow-lg">Book Consultation <ArrowRight className="w-5 h-5" /></a>
                 </div>
               </div>
@@ -422,7 +651,9 @@ export default function Landing() {
               <img src="/logo.png" alt="MK Health Clinic" className="w-10 h-10 rounded-lg object-contain" />
               <div><h1 className="font-display font-bold text-text-900 text-lg leading-none">MK Health Clinic</h1><p className="text-xs text-text-500">Jaipur, Rajasthan</p></div>
             </div>
-            <div className="flex items-center gap-8 text-sm text-text-500 font-medium">
+            <div className="flex flex-wrap items-center gap-x-8 gap-y-3 text-sm text-text-500 font-medium">
+              <a href="#how-it-works" className="hover:text-primary-800 transition-colors">How It Works</a>
+              <a href="#services" className="hover:text-primary-800 transition-colors">Services</a>
               <a href="#about" className="hover:text-primary-800 transition-colors">About</a>
               <a href="#testimonials" className="hover:text-primary-800 transition-colors">Reviews</a>
               <a href="#faq" className="hover:text-primary-800 transition-colors">FAQ</a>

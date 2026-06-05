@@ -21,6 +21,7 @@ export default function DoctorDashboard() {
   const [blocking, setBlocking] = useState<number | null>(null)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [showPasswordModal, setShowPasswordModal] = useState(false)
+  const [confirmBlockSlot, setConfirmBlockSlot] = useState<SlotData | null>(null)
 
   useEffect(() => {
     const token = localStorage.getItem('doctor_token')
@@ -58,6 +59,11 @@ export default function DoctorDashboard() {
     } finally {
       setBlocking(null)
     }
+  }
+
+  const handleConfirmBlockSlot = async (slotId: number) => {
+    setConfirmBlockSlot(null)
+    await handleBlockSlot(slotId)
   }
 
   const handleLogout = () => {
@@ -219,7 +225,7 @@ export default function DoctorDashboard() {
                     <div
                       key={slot.id}
                       className={`border rounded-xl p-4 transition-colors ${getCardStyle(slot.status)}`}
-                      onClick={() => slot.status === 'booked' && handleBlockSlot(slot.id)}
+                      onClick={() => slot.status === 'booked' && setConfirmBlockSlot(slot)}
                     >
                       <div className="flex items-center justify-between mb-2">
                         <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-lg text-xs font-medium border ${getStatusStyle(slot.status)}`}>
@@ -259,6 +265,14 @@ export default function DoctorDashboard() {
       </main>
 
       <ChangePasswordModal isOpen={showPasswordModal} onClose={() => setShowPasswordModal(false)} />
+      
+      <ConfirmBlockModal
+        isOpen={confirmBlockSlot !== null}
+        slot={confirmBlockSlot}
+        onClose={() => setConfirmBlockSlot(null)}
+        onConfirm={handleConfirmBlockSlot}
+        loading={blocking !== null}
+      />
     </div>
   )
 }
@@ -414,6 +428,113 @@ function ChangePasswordModal({ isOpen, onClose }: ChangePasswordModalProps) {
             </div>
           </form>
         )}
+      </motion.div>
+    </div>
+  )
+}
+
+interface ConfirmBlockModalProps {
+  isOpen: boolean
+  slot: SlotData | null
+  onClose: () => void
+  onConfirm: (slotId: number) => void
+  loading: boolean
+}
+
+function ConfirmBlockModal({ isOpen, slot, onClose, onConfirm, loading }: ConfirmBlockModalProps) {
+  if (!isOpen || !slot) return null
+
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr)
+    return date.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
+  }
+
+  const formatTime = (timeStr: string) => {
+    const [hours, minutes] = timeStr.split(':')
+    const hour = parseInt(hours)
+    const ampm = hour >= 12 ? 'PM' : 'AM'
+    const hour12 = hour % 12 || 12
+    return `${hour12}:${minutes} ${ampm}`
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
+
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-white border border-surface-300 rounded-2xl w-full max-w-md p-8 shadow-2xl relative z-10"
+      >
+        <button
+          onClick={onClose}
+          className="absolute right-4 top-4 text-text-400 hover:text-text-900 transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
+            <Blocks className="w-5 h-5 text-red-600" />
+          </div>
+          <div>
+            <h2 className="text-xl font-display font-bold text-text-900">Block Booked Slot?</h2>
+            <p className="text-xs text-text-500">Confirm emergency schedule change</p>
+          </div>
+        </div>
+
+        <div className="space-y-4 mb-6">
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 text-red-800 text-sm flex gap-3">
+            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="font-semibold mb-1">Warning: Cascading Reschedule</p>
+              <p className="text-xs text-red-700 leading-relaxed">
+                This slot is currently booked. Blocking it will shift subsequent bookings forward to preserve order, and send reschedule email notifications to all affected patients.
+              </p>
+            </div>
+          </div>
+
+          <div className="bg-surface-50 border border-surface-200 rounded-xl p-4 space-y-2.5">
+            <div>
+              <span className="text-xs text-text-400 block uppercase font-semibold tracking-wider">Patient Name</span>
+              <span className="text-text-900 font-medium text-sm">{slot.patient_name}</span>
+            </div>
+            <div>
+              <span className="text-xs text-text-400 block uppercase font-semibold tracking-wider">Patient Email</span>
+              <span className="text-text-900 font-medium text-sm">{slot.patient_email}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <span className="text-xs text-text-400 block uppercase font-semibold tracking-wider">Date</span>
+                <span className="text-text-900 font-medium text-sm">{formatDate(slot.date)}</span>
+              </div>
+              <div>
+                <span className="text-xs text-text-400 block uppercase font-semibold tracking-wider">Time</span>
+                <span className="text-text-900 font-medium text-sm">{formatTime(slot.start_time)} - {formatTime(slot.end_time)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={loading}
+            className="flex-1 bg-surface-100 hover:bg-surface-200 text-text-700 font-semibold py-2.5 rounded-xl transition-colors text-sm border border-surface-300"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => onConfirm(slot.id)}
+            disabled={loading}
+            className="flex-1 bg-red-600 hover:bg-red-700 disabled:bg-surface-400 text-white font-semibold py-2.5 rounded-xl transition-colors text-sm flex items-center justify-center gap-1.5 shadow-md"
+          >
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Confirm & Block'}
+          </button>
+        </div>
       </motion.div>
     </div>
   )

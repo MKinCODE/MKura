@@ -44,8 +44,16 @@ def extract_name(text: str) -> Optional[str]:
 
 
 def validate_email(email: str) -> bool:
-    pattern = r'^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'
-    return bool(re.match(pattern, email))
+    from email_validator import validate_email as check_email, EmailNotValidError
+    try:
+        check_email(email, check_deliverability=True)
+        return True
+    except EmailNotValidError:
+        return False
+    except Exception:
+        # Fallback to standard regex if DNS resolution or network fails
+        pattern = r'^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'
+        return bool(re.match(pattern, email))
 
 
 def validate_phone(phone: str) -> bool:

@@ -209,35 +209,117 @@ async def find_earliest_available_slot(
 async def block_slot_with_reassignment(
     db: AsyncSession,
     slot_id: int,
-) -> Tuple[bool, Optional[Booking], Optional[Slot]]:
+) -> Tuple[bool, List[Tuple[Booking, Slot, Optional[Slot]]]]:
     slot_query = select(Slot).where(Slot.id == slot_id).options(selectinload(Slot.booking))
     result = await db.execute(slot_query)
     slot = result.scalar_one_or_none()
 
     if not slot:
-        return False, None, None
+        return False, []
 
-    if slot.booking and slot.booking.status == BookingStatus.CONFIRMED:
-        patient_booking = slot.booking
-        new_slot = await find_next_available_slot(
-            db, slot.doctor_id, slot.date, slot.start_time
-        )
+    if slot.status == SlotStatus.BLOCKED:
+        return True, []
 
-        if new_slot:
-            patient_booking.slot_id = new_slot.id
-            new_slot.status = SlotStatus.BOOKED
-            slot.status = SlotStatus.BLOCKED
-            await db.commit()
-            return True, patient_booking, new_slot
-        else:
-            slot.status = SlotStatus.BLOCKED
-            patient_booking.status = BookingStatus.CANCELLED
-            await db.commit()
-            return True, patient_booking, None
-    else:
+    if not (slot.booking and slot.booking.status == BookingStatus.CONFIRMED):
         slot.status = SlotStatus.BLOCKED
         await db.commit()
-        return True, None, None
+        return True, []
+
+    # Get all subsequent slots for this doctor chronologically.
+    all_slots_query = select(Slot).where(
+        and_(
+            Slot.doctor_id == slot.doctor_id,
+            or_(
+                Slot.date > slot.date,
+                and_(Slot.date == slot.date, Slot.start_time >= slot.start_time)
+            )
+        )
+    ).order_by(Slot.date, Slot.start_time).options(selectinload(Slot.booking))
+    
+    result = await db.execute(all_slots_query)
+    loaded_slots = list(result.scalars().all())
+
+    start_idx = -1
+    for idx, s in enumerate(loaded_slots):
+        if s.id == slot_id:
+            start_idx = idx
+            break
+            
+    if start_idx == -1:
+        return False, []
+
+    loaded_slots = loaded_slots[start_idx:]
+
+    shift_slots = [loaded_slots[0]]
+    found_available = False
+
+    for s in loaded_slots[1:]:
+        if s.status == SlotStatus.BLOCKED:
+            continue
+        if s.status == SlotStatus.AVAILABLE:
+            shift_slots.append(s)
+            found_available = True
+            break
+        elif s.status == SlotStatus.BOOKED:
+            shift_slots.append(s)
+
+    if not found_available:
+        last_date = loaded_slots[-1].date if loaded_slots else slot.date
+        current_date = last_date + timedelta(days=1)
+        max_search_date = slot.date + timedelta(days=settings.MAX_ADVANCE_BOOKING_DAYS)
+        
+        while current_date <= max_search_date and not found_available:
+            new_day_slots = await get_or_generate_slots(db, slot.doctor_id, current_date)
+            new_day_slots = sorted(new_day_slots, key=lambda x: x.start_time)
+            
+            for s in new_day_slots:
+                if s.status == SlotStatus.BLOCKED:
+                    continue
+                if s.status == SlotStatus.AVAILABLE:
+                    shift_slots.append(s)
+                    found_available = True
+                    break
+                elif s.status == SlotStatus.BOOKED:
+                    shift_slots.append(s)
+            current_date += timedelta(days=1)
+
+    bookings_to_shift = [s.booking for s in shift_slots]
+    bookings_to_shift = [b for b in bookings_to_shift if b is not None]
+
+    reassignments = []
+    slot.status = SlotStatus.BLOCKED
+
+    if found_available:
+        for i in range(len(bookings_to_shift)):
+            booking = bookings_to_shift[i]
+            old_slot = shift_slots[i]
+            new_slot = shift_slots[i + 1]
+            
+            booking.slot_id = new_slot.id
+            new_slot.status = SlotStatus.BOOKED
+            
+            reassignments.append((booking, old_slot, new_slot))
+    else:
+        for i in range(len(bookings_to_shift) - 1):
+            booking = bookings_to_shift[i]
+            old_slot = shift_slots[i]
+            new_slot = shift_slots[i + 1]
+            
+            booking.slot_id = new_slot.id
+            new_slot.status = SlotStatus.BOOKED
+            
+            reassignments.append((booking, old_slot, new_slot))
+            
+        last_booking = bookings_to_shift[-1]
+        old_slot = shift_slots[-1]
+        
+        last_booking.status = BookingStatus.CANCELLED
+        last_booking.slot_id = slot.id
+        
+        reassignments.append((last_booking, old_slot, None))
+
+    await db.commit()
+    return True, reassignments
 
 
 async def find_next_available_slot(

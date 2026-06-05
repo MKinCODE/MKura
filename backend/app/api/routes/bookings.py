@@ -27,6 +27,10 @@ async def create_booking(
     wants_waitlist: bool = False,
     db: AsyncSession = Depends(get_db),
 ):
+    from app.agents.nlp.entity_extractor import validate_email
+    if not validate_email(patient_email):
+        raise HTTPException(status_code=400, detail="Invalid patient email address or domain cannot receive email.")
+
     slot_query = select(Slot).where(Slot.id == slot_id).options()
     result = await db.execute(slot_query)
     slot = result.scalar_one_or_none()

@@ -217,20 +217,20 @@ class BookingAgentService:
         # 2. Update agent data from LLM extraction
         if extracted.get("name") and not agent.data.name:
             agent.data.name = extracted["name"].title()
-        if extracted.get("email") and not agent.data.email:
-            from .nlp import validate_email
-            if validate_email(extracted["email"]):
-                agent.data.email = extracted["email"].lower()
         if extracted.get("phone") and not agent.data.phone:
             from .nlp import validate_phone
             if validate_phone(extracted["phone"]):
                 agent.data.phone = extracted["phone"]
 
         # 3. Fallback/Regex extraction for anything still missing
-        if not agent.data.email:
-            email = extract_email(message)
-            if email:
-                agent.data.email = email.lower()
+        raw_email = extracted.get("email") or extract_email(message)
+        if raw_email and not agent.data.email:
+            from .nlp import validate_email
+            if validate_email(raw_email):
+                agent.data.email = raw_email.lower()
+                agent.context.pop("email_error", None)
+            else:
+                agent.context["email_error"] = True
 
         if not agent.data.phone:
             phone = extract_phone(message)
@@ -259,7 +259,10 @@ class BookingAgentService:
             
         elif not has_email:
             agent.stage = BookingStage.EMAIL
-            if not had_name:
+            if agent.context.get("email_error"):
+                response = "I'm sorry, but that email address could not be verified (invalid format or unreachable domain). Please enter a valid, active email address."
+                agent.context.pop("email_error", None)
+            elif not had_name:
                 response = f"Thank you, {agent.data.name}! Could you please provide your email address so we can send you appointment confirmations?"
             else:
                 instruction = (
