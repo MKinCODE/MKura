@@ -212,6 +212,208 @@ const FadeInUp = ({ children, delay = 0, className = "" }: { children: React.Rea
   </motion.div>
 )
 
+interface ChatMessage {
+  id: string
+  sender: 'bot' | 'user'
+  text: string
+}
+
+function ChatMockup() {
+  const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [inputValue, setInputValue] = useState('')
+  const [typingState, setTypingState] = useState<'bot' | 'user' | 'none'>('none')
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
+
+  const script = [
+    { sender: 'bot', text: "Hello! I am MKura, your medical assistant. Let's get you booked. What is your full name?" },
+    { sender: 'user', text: "Amit Sen" },
+    { sender: 'bot', text: "Thank you, Amit! Could you please provide your email address so we can send you appointment confirmations?" },
+    { sender: 'user', text: "amit.sen@gmail.com" },
+    { sender: 'bot', text: "Got it, thanks! To keep you updated on your appointments and for any urgent notifications, could you please share your phone number?" },
+    { sender: 'user', text: "9876543210" },
+    { sender: 'bot', text: "PERFECT! I've recorded your details:\n👤 Name: Amit Sen\n✉️ Email: amit.sen@gmail.com\n📞 Phone: 9876543210\n\nI found an available slot: Tuesday (June 9) at 2:20 PM with Dr. Mousam. Would you like me to hold this slot?" },
+    { sender: 'user', text: "Yes, please." },
+    { sender: 'bot', text: "To confirm your booking, a refundable deposit of ₹100 is required.\n\n🧪 *Demo/Test Payment – No real charges are made.*\n\nYou'll be redirected to complete payment." }
+  ]
+
+  const scrollToBottom = () => {
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight
+    }
+  }
+
+  useEffect(() => {
+    scrollToBottom()
+  }, [messages, typingState])
+
+  useEffect(() => {
+    let isMounted = true
+    let currentStep = 0
+
+    const runScript = async () => {
+      // Small initial delay
+      await new Promise(resolve => setTimeout(resolve, 800))
+      
+      while (isMounted) {
+        if (currentStep >= script.length) {
+          // Wait at the end of loop
+          await new Promise(resolve => setTimeout(resolve, 5000))
+          if (!isMounted) break
+          // Reset
+          setMessages([])
+          setInputValue('')
+          setTypingState('none')
+          currentStep = 0
+          await new Promise(resolve => setTimeout(resolve, 1000))
+          continue
+        }
+
+        const step = script[currentStep]
+
+        if (step.sender === 'bot') {
+          // Show typing dots for bot
+          setTypingState('bot')
+          await new Promise(resolve => setTimeout(resolve, 1500))
+          if (!isMounted) break
+
+          // Add bot message
+          const botMsg: ChatMessage = {
+            id: Math.random().toString(),
+            sender: 'bot',
+            text: step.text
+          }
+          setMessages(prev => [...prev, botMsg])
+          setTypingState('none')
+          currentStep++
+          await new Promise(resolve => setTimeout(resolve, 1000))
+        } else {
+          // User typing simulation
+          setTypingState('user')
+          const textToType = step.text
+          let currentTyped = ""
+          for (let i = 0; i < textToType.length; i++) {
+            await new Promise(resolve => setTimeout(resolve, 80 + Math.random() * 40))
+            if (!isMounted) break
+            currentTyped += textToType[i]
+            setInputValue(currentTyped)
+          }
+
+          if (!isMounted) break
+          // Small pause before sending
+          await new Promise(resolve => setTimeout(resolve, 600))
+          if (!isMounted) break
+
+          // Add user message and clear input
+          const userMsg: ChatMessage = {
+            id: Math.random().toString(),
+            sender: 'user',
+            text: step.text
+          }
+          setMessages(prev => [...prev, userMsg])
+          setInputValue('')
+          setTypingState('none')
+          currentStep++
+          await new Promise(resolve => setTimeout(resolve, 1200))
+        }
+      }
+    }
+
+    runScript()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
+  return (
+    <div className="bg-white border border-surface-300 rounded-[2rem] shadow-xl overflow-hidden max-w-lg mx-auto flex flex-col h-[460px]">
+      {/* Mockup Header */}
+      <div className="bg-primary-900 px-6 py-4 flex items-center justify-between flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 bg-primary-800 rounded-full flex items-center justify-center text-white font-bold text-sm relative">
+            MK
+            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 border-2 border-primary-900 rounded-full animate-pulse"></span>
+          </div>
+          <div className="text-left">
+            <h4 className="text-white font-semibold text-sm">MKura Assistant</h4>
+            <span className="text-[10px] text-primary-300">Live Booking Agent</span>
+          </div>
+        </div>
+        <div className="flex gap-1.5">
+          <span className="w-2.5 h-2.5 rounded-full bg-primary-700"></span>
+          <span className="w-2.5 h-2.5 rounded-full bg-primary-700"></span>
+          <span className="w-2.5 h-2.5 rounded-full bg-primary-700"></span>
+        </div>
+      </div>
+
+      {/* Mockup Body */}
+      <div 
+        ref={messagesContainerRef}
+        className="p-6 bg-slate-50 flex-grow overflow-y-auto space-y-4 text-xs text-left"
+      >
+        {messages.map((msg) => (
+          <div
+            key={msg.id}
+            className={`flex items-start gap-2.5 ${msg.sender === 'user' ? 'justify-end' : ''}`}
+          >
+            {msg.sender === 'bot' && (
+              <div className="w-7 h-7 bg-primary-100 rounded-lg flex items-center justify-center text-primary-800 font-bold text-xs flex-shrink-0">
+                MK
+              </div>
+            )}
+            <div
+              className={`p-3 rounded-2xl leading-relaxed shadow-sm whitespace-pre-line ${
+                msg.sender === 'user'
+                  ? 'bg-primary-800 text-white rounded-tr-none max-w-[80%]'
+                  : 'bg-white border border-surface-200 text-text-700 rounded-tl-none max-w-[80%]'
+              }`}
+            >
+              {msg.text}
+            </div>
+          </div>
+        ))}
+
+        {typingState === 'bot' && (
+          <div className="flex items-start gap-2.5">
+            <div className="w-7 h-7 bg-primary-100 rounded-lg flex items-center justify-center text-primary-800 font-bold text-xs flex-shrink-0">
+              MK
+            </div>
+            <div className="bg-white border border-surface-200 p-3 rounded-2xl rounded-tl-none flex items-center gap-1 shadow-sm">
+              <span className="w-1.5 h-1.5 bg-primary-800 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+              <span className="w-1.5 h-1.5 bg-primary-800 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+              <span className="w-1.5 h-1.5 bg-primary-800 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Mockup Input bar */}
+      <div className="px-6 py-4 bg-white border-t border-surface-200 flex items-center justify-between gap-3 flex-shrink-0">
+        <div className="bg-slate-100 text-text-700 text-xs px-4 py-2.5 rounded-xl flex-grow text-left min-h-[36px] flex items-center">
+          {inputValue ? (
+            <span className="text-text-900 font-medium">
+              {inputValue}
+              <span className="animate-pulse">|</span>
+            </span>
+          ) : (
+            <span className="text-text-300">Type your message here...</span>
+          )}
+        </div>
+        <button
+          className={`w-9 h-9 rounded-xl flex items-center justify-center text-white font-bold transition-all shadow-md ${
+            inputValue
+              ? 'bg-primary-800 hover:bg-primary-700 scale-105 animate-pulse'
+              : 'bg-primary-900/40 cursor-not-allowed'
+          }`}
+          disabled={!inputValue}
+        >
+          →
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function Landing() {
   const openChat = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -341,67 +543,7 @@ export default function Landing() {
             {/* Stylized Chat Mockup - Right Side */}
             <div className="lg:col-span-7">
               <FadeInUp delay={0.3}>
-                <div className="bg-white border border-surface-300 rounded-[2rem] shadow-xl overflow-hidden max-w-lg mx-auto">
-                  {/* Mockup Header */}
-                  <div className="bg-primary-900 px-6 py-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-9 h-9 bg-primary-800 rounded-full flex items-center justify-center text-white font-bold text-sm relative">
-                        MK
-                        <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-400 border-2 border-primary-900 rounded-full animate-pulse"></span>
-                      </div>
-                      <div>
-                        <h4 className="text-white font-semibold text-sm">MKura Assistant</h4>
-                        <span className="text-[10px] text-primary-300">Live Booking Agent</span>
-                      </div>
-                    </div>
-                    <div className="flex gap-1.5">
-                      <span className="w-2.5 h-2.5 rounded-full bg-primary-700"></span>
-                      <span className="w-2.5 h-2.5 rounded-full bg-primary-700"></span>
-                      <span className="w-2.5 h-2.5 rounded-full bg-primary-700"></span>
-                    </div>
-                  </div>
-
-                  {/* Mockup Body */}
-                  <div className="p-6 bg-slate-50 space-y-4 text-xs h-[300px] overflow-y-auto text-left">
-                    <div className="flex items-start gap-2.5">
-                      <div className="w-7 h-7 bg-primary-100 rounded-lg flex items-center justify-center text-primary-800 font-bold text-xs flex-shrink-0">MK</div>
-                      <div className="bg-white border border-surface-200 p-3 rounded-2xl rounded-tl-none max-w-[80%] text-text-700 leading-relaxed shadow-sm">
-                        Hello! I am MKura, your medical assistant. Let's get you booked. What is your preferred date or timing for your checkup?
-                      </div>
-                    </div>
-
-                    <div className="flex items-start justify-end gap-2.5">
-                      <div className="bg-primary-800 text-white p-3 rounded-2xl rounded-tr-none max-w-[80%] leading-relaxed shadow-sm">
-                        I need a routine physical checkup with Dr. Mousam this Tuesday afternoon if possible.
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-2.5">
-                      <div className="w-7 h-7 bg-primary-100 rounded-lg flex items-center justify-center text-primary-800 font-bold text-xs flex-shrink-0">MK</div>
-                      <div className="bg-white border border-surface-200 p-3 rounded-2xl rounded-tl-none max-w-[80%] text-text-700 leading-relaxed shadow-sm space-y-2">
-                        <p>I found an available slot this Tuesday at 2:20 PM with Dr. Mousam.</p>
-                        <p className="font-semibold text-primary-800">🗓️ Tuesday (June 9) at 2:20 PM - 2:40 PM</p>
-                        <p>Would you like me to hold this slot and collect your registration details?</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start justify-end gap-2.5">
-                      <div className="bg-primary-800 text-white p-3 rounded-2xl rounded-tr-none max-w-[80%] leading-relaxed shadow-sm">
-                        Yes, that time is perfect. My name is Amit Sen.
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Mockup Input bar */}
-                  <div className="px-6 py-4 bg-white border-t border-surface-200 flex items-center justify-between gap-3">
-                    <div className="bg-slate-100 text-text-300 text-xs px-4 py-2.5 rounded-xl flex-grow text-left">
-                      Type your message here...
-                    </div>
-                    <div className="w-9 h-9 bg-primary-800 rounded-xl flex items-center justify-center text-white font-bold cursor-pointer hover:bg-primary-700 transition-colors shadow-md">
-                      →
-                    </div>
-                  </div>
-                </div>
+                <ChatMockup />
               </FadeInUp>
             </div>
           </div>
