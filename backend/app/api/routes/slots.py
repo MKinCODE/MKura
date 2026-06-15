@@ -21,7 +21,9 @@ async def get_available_slots(
     target_date: Optional[date] = None,
     db: AsyncSession = Depends(get_db),
 ):
-    from app.services.slot_service import get_clinic_now
+    from app.services.slot_service import get_clinic_now, cleanup_past_empty_slots
+    await cleanup_past_empty_slots(db)
+
     now = get_clinic_now()
     today = now.date()
 
@@ -36,15 +38,16 @@ async def get_available_slots(
     slots = []
     current_date = max(min_time.date(), today)  # Never go before today
 
-    for _ in range(settings.MAX_ADVANCE_BOOKING_DAYS):
-        doctor_query = select(Doctor).where(Doctor.is_active == True)
-        if doctor_id:
-            doctor_query = doctor_query.where(Doctor.id == doctor_id)
-        doctor_result = await db.execute(doctor_query)
-        doctors = doctor_result.scalars().all()
+    # Query active doctors once outside the search loop
+    doctor_query = select(Doctor).where(Doctor.is_active == True)
+    if doctor_id:
+        doctor_query = doctor_query.where(Doctor.id == doctor_id)
+    doctor_result = await db.execute(doctor_query)
+    doctors = doctor_result.scalars().all()
 
+    for _ in range(settings.MAX_ADVANCE_BOOKING_DAYS):
         for doc in doctors:
-            day_slots = await get_or_generate_slots(db, doc.id, current_date)
+            day_slots = await get_or_generate_slots(db, doc.id, current_date, run_cleanup=False)
             slots.extend([s for s in day_slots if s.status == SlotStatus.AVAILABLE])
 
         if slots:

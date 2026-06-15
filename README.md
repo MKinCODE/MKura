@@ -16,9 +16,10 @@ This project is built using modern software engineering patterns designed for hi
 *   **Emergency Slot Blocking**: If a doctor experiences an emergency and blocks a slot, the system automatically triggers an event-driven rescheduling pipeline. Impacted patients are notified immediately with customizable rescheduling actions, keeping clinical calendars fluid without administrative overhead.
 *   **Real-time Calendar Board**: A 7-day responsive grid visualization showing patient status, slot states (available, booked, waitlisted, blocked), and automatic day-to-day schedule rolling.
 
-### 3. Sleek Transient State & Concurrency Control
+### 3. Integrated Email & Transient State Controls
+*   **Gmail REST API Integration**: Bypasses typical SMTP port blocks on cloud providers by interacting directly with the Gmail API via Google OAuth2 token refreshing. Dispatches confirmation, cancellation, and waitlist priority upgrade links securely.
 *   **Simulated Demo Payment Lifecycle**: Replaced heavy external SDK dependencies with a modular, lightweight simulated checkout drawer. The checkout processes a ₹100 deposit with realistic transitions, and securely resumes the booking chat session on completion.
-*   **Concurreny & Booking Safeguards**: Implements a strict **1-hour minimum lead-time constraint** to prevent short-notice doctor disruptions. Automatically enforces hard boundaries by filtering out past-date slots and expired same-day times across all endpoints.
+*   **Concurrency & Booking Safeguards**: Implements a strict **1-hour minimum lead-time constraint** to prevent short-notice doctor disruptions. Automatically enforces hard boundaries by filtering out past-date slots and expired same-day times across all endpoints.
 
 ---
 
@@ -31,17 +32,23 @@ sequenceDiagram
     participant Chat as AI Chat Agent (Groq)
     participant DB as PostgreSQL (DB)
     participant UpStash as Redis (Cache/Rate-Limits)
-    participant Email as Resend API (Email)
+    participant Gmail as Gmail REST API
+    actor Doctor as Doctor Portal
 
     Patient->>Chat: "Book a slot for tomorrow morning"
     Chat->>UpStash: Check Rate-Limiting & Session State
-    Chat->>DB: Query Available Slots & Seeding State
+    Chat->>DB: Query Available Slots (Batched Optimization)
     DB-->>Chat: Returns Available Slots
     Chat-->>Patient: Proposes slot + triggers Booking Checkout
     Patient->>Patient: Submits simulated ₹100 payment
     Patient->>DB: Persists Booking (Status: Confirmed)
-    DB-->>Email: Dispatch secure confirmation email with token
-    Email-->>Patient: Email received with cancellation & reschedule link
+    DB-->>Gmail: Dispatch OAuth2 fresh tokenized confirmation email
+    Gmail-->>Patient: Email received with cancellation & reschedule link
+    
+    Note over Doctor, DB: If Doctor blocks slot due to emergency:
+    Doctor->>DB: Block Slot (Trigger reassignment)
+    DB->>DB: Cascades bookings to next available slots
+    DB-->>Gmail: Dispatch rescheduling alerts to affected patients
 ```
 
 ---
@@ -56,19 +63,17 @@ sequenceDiagram
 | **Database ORM** | `PostgreSQL 15` + `SQLAlchemy (Asyncio)` | Robust relational storage with asynchronous engine execution, ensuring non-blocking PostgreSQL connection pooling. |
 | **Cache & Middleware** | `Redis 7` | Ultra-fast key-value store handling low-latency API rate-limiting and session synchronization. |
 | **Generative AI** | `Groq SDK (Llama 3 70B)` | Sub-second inference latency, allowing natural conversational flows and seamless token extraction. |
-| **Transactional Email** | `Resend SDK` | Modern API-based email delivery, eliminating SMTP port/firewall issues on cloud platforms like Render. |
+| **Transactional Email** | `Gmail REST API (Google Cloud OAuth2)` | Modern RESTful email delivery that bypasses port 587/465 blocks common on cloud hosts (e.g. Render). |
 
 ---
 
-## 📂 Clean & Scalable Directory Structure
-
-The repository is divided into a decoupled, high-cohesion monorepo design, separating frontend visual states from backend domain logic:
+## 📂 Project Structure
 
 ```
 Multi-agent-clinic-scheduler/
 ├── backend/                         # FastAPI Application Service
 │   ├── app/
-│   │   ├── api/                     # REST API Controllers & Dependecies
+│   │   ├── api/                     # REST API Controllers & Dependencies
 │   │   │   ├── routes/              # Auth, Bookings, Slots, and Chat router endpoints
 │   │   │   └── deps.py              # Auth middleware & Database session injectors
 │   │   ├── agents/                  # Intelligent AI Agents layer
@@ -78,8 +83,8 @@ Multi-agent-clinic-scheduler/
 │   │   ├── core/                    # App configurations, secrets, and Redis rate limiters
 │   │   ├── models/                  # Database relational models (Doctor, Slot, Booking, Waitlist)
 │   │   ├── schemas/                 # Strongly-typed input/output Pydantic structures
-│   │   ├── services/                # Asynchronous helper services (Resend Email, Slot seeder)
-│   │   └── main.py                  # Lifespan initializer and CORS configurations
+│   │   ├── services/                # Asynchronous helper services (Gmail REST API, Slot seeder)
+│   │   └── main.py                  # Lifespan initializer, CORS, and /health route
 │   ├── requirements.txt             # Python backend dependencies manifest
 │   └── seed_data.py                 # Seeds clinic calendar and default Doctor accounts
 ├── frontend/                        # React Frontend Application
@@ -114,34 +119,109 @@ Multi-agent-clinic-scheduler/
 
 ---
 
-## 🩺 Demo & Doctor Portal Seeding
+## 🔧 Environment Configuration & Setup
 
-To explore the doctor dashboard, the system includes an automated seeding process on backend startup:
+### 1. Gmail API OAuth2 Credentials Setup
+Since this platform uses the **Gmail REST API**, you need to generate Google OAuth2 credentials:
+1. Go to the [Google Cloud Console](https://console.cloud.google.com/).
+2. Create a project and search for **Gmail API**, then click **Enable**.
+3. Go to the **OAuth Consent Screen** tab, select **External**, and set up your app credentials. Add your sender email as a **Test User** (since your app will be in testing mode).
+4. Go to **Credentials**, click **Create Credentials** -> **OAuth Client ID**, select **Web Application**.
+5. Under **Authorized Redirect URIs**, enter `https://developers.google.com/oauthplayground` (useful for retrieving the refresh token easily). Save and note your `Client ID` and `Client Secret`.
+6. Navigate to [Google OAuth Playground](https://developers.google.com/oauthplayground):
+   * Click the settings gear (top right), check **Use your own OAuth credentials**, and paste your `Client ID` and `Client Secret`.
+   * Under step 1, select the scope `https://www.googleapis.com/auth/gmail.send` and click **Authorize APIs**.
+   * Sign in with your Google Test User account and approve permissions.
+   * Under step 2, click **Exchange authorization code for tokens** to copy the generated **Refresh Token**.
 
-*   **Configurable Doctor Portal Account**: By default, the database automatically seeds the doctor login with the email `mousam1234@mkhealth.com` and password `doctor123`.
-*   **Custom Seeding Credentials**: You can easily customize or secure these default credentials by setting the `SEED_DOCTOR_EMAIL` and `SEED_DOCTOR_PASSWORD` environment variables in your backend service (e.g. Render).
-*   **Simulated Checkout**: When prompted inside the chat modal, click the **"Pay ₹100"** button. The simulator handles state transactions and automatically redirects your active conversation.
+### 2. Setting up local `.env` files
+Create a `.env` file in `/backend` using the variables below:
+```env
+APP_NAME="MK Health Clinic API"
+DEBUG=True
+DATABASE_URL="postgresql+asyncpg://postgres:postgres@localhost:5432/clinic_db"
+DATABASE_URL_SYNC="postgresql://postgres:postgres@localhost:5432/clinic_db"
+REDIS_URL="redis://localhost:6379/0"
+SECRET_KEY="your-super-secret-key-make-it-long-in-prod"
+CLIENT_URL="http://localhost:3000"
+
+# Groq API Key for AI scheduling agent
+GROQ_API_KEY="your_groq_api_key"
+
+# Gmail REST API OAuth2 Configurations
+GMAIL_CLIENT_ID="your_google_client_id"
+GMAIL_CLIENT_SECRET="your_google_client_secret"
+GMAIL_REFRESH_TOKEN="your_google_refresh_token"
+GMAIL_SENDER_EMAIL="your_sender_gmail_account@gmail.com"
+
+# Seeding configurations
+SEED_DOCTOR_EMAIL="mousam1234@mkhealth.com"
+SEED_DOCTOR_PASSWORD="doctor123"
+```
+
+Create a `.env` file in `/frontend`:
+```env
+VITE_API_URL="http://localhost:8000"
+```
 
 ---
 
-## 📡 REST API Reference
+## ⚡ Running Locally
 
-### 🔐 Authentication & Accounts
-*   `POST /api/auth/login` — Doctor credential verification & JWT token dispatch.
+### Option A: Quick-start using Docker Compose (Recommended)
+Make sure you have Docker installed, then run the following command in the root folder:
+```bash
+docker-compose up --build
+```
+This single command spins up PostgreSQL, Redis, the FastAPI backend (port `8000`), and the React frontend (port `3000`), automatically running database migrations and seeding the default doctor slots on startup.
 
-### 💬 Conversational AI Engine
-*   `POST /api/chat/message` — Feeds natural text into the Groq Llama-3 parser to capture intents.
-*   `GET /api/chat/slots/earliest` — Extracts the next earliest operational appointment slot.
+### Option B: Running Manually
 
-### 📅 Slots Operations
-*   `GET /api/slots/available` — Returns clinical slots for the rolling 7-day dashboard.
-*   `POST /api/slots/block` — Enforces an emergency calendar hold and triggers automated rescheduling cascades.
+#### 1. Database & Cache Services
+Ensure you have local instances of **PostgreSQL** (with database name `clinic_db`) and **Redis** running on their default ports (`5432` and `6379`).
 
-### 🧾 Booking Lifecycle
-*   `POST /api/bookings/create` — Validates transience, accepts checkout details, and confirms booking.
-*   `GET /api/bookings/{id}/cancel/{token}` — Validates email-tokenized cancellation requests.
-*   `POST /api/bookings/{id}/cancel/{token}` — Commits the cancellation request, prompting the FIFO upgradation flow.
-*   `GET /api/bookings/doctor/all` — Queries all active bookings for authorized doctors.
+#### 2. Start the Backend API
+```bash
+cd backend
+python -m venv venv
+# On Windows
+venv\Scripts\activate
+# On macOS/Linux
+source venv/bin/activate
+
+pip install -r requirements.txt
+python seed_data.py # Seed doctors, weekly schedules, and calendar slots
+uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+#### 3. Start the Frontend client
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+---
+
+## 🔌 Render Deployment & Hosting Optimizations
+
+When deploying the application to **Render's Free Tier**, two main limitations arise: cold starts and execution timeouts due to heavily throttled database transaction loops. The following solutions are built into this repository:
+
+### 1. Eliminating Cold Starts (Keep Awake Ping)
+Render's free web service spins down after 15 minutes of inactivity, causing the first visitor to wait 50–120 seconds for the app to wake up.
+* **Solution**: The backend exposes a lightweight, database-free, fast-responding `/health` check.
+* **Action**: Configure a free account on [Cron-Job.org](https://cron-job.org/) to hit your deployed backend URL: `https://your-backend-name.onrender.com/health` every **10 to 12 minutes**. Since it bypasses SQL queries, it wakes the server instantly with zero overhead.
+
+### 2. High-Performance Query Optimization
+On Render's CPU-throttled containers, running database operations inside loops chokes FastAPI's event loop. 
+* **Refactoring details**: The slot retrieval code batches doctor details once per call and restricts slot cleanups to run once at the initiation of requests rather than inside day-by-day nested iteration loops. This reduces query complexity from $O(N)$ database round-trips to $O(1)$ batched requests, preventing API Gateway Timeouts (504).
+
+---
+
+## 🩺 Demo Credentials & Interactive Docs
+*   **Doctor Dashboard Login**: Email `mousam1234@mkhealth.com` and password `doctor123`.
+*   **FastAPI Swagger UI Docs**: Available at `http://localhost:8000/docs`.
+*   **Alternative Redoc Portal**: Available at `http://localhost:8000/redoc`.
 
 ---
 

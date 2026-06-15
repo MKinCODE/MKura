@@ -40,7 +40,12 @@ async def cleanup_past_empty_slots(db: AsyncSession):
         await db.rollback()
 
 
-async def generate_slots_for_date(db: AsyncSession, doctor_id: int, target_date: date) -> List[Slot]:
+async def generate_slots_for_date(
+    db: AsyncSession,
+    doctor_id: int,
+    target_date: date,
+    existing_slots: Optional[List[Slot]] = None,
+) -> List[Slot]:
     day_of_week = target_date.weekday()
     schedule_query = select(WeeklySchedule).where(
         and_(
@@ -60,11 +65,12 @@ async def generate_slots_for_date(db: AsyncSession, doctor_id: int, target_date:
     end_datetime = datetime.combine(target_date, schedule.end_time)
     slot_duration = timedelta(minutes=settings.SLOT_DURATION_MINUTES)
 
-    existing_query = select(Slot).where(
-        and_(Slot.doctor_id == doctor_id, Slot.date == target_date)
-    )
-    existing_result = await db.execute(existing_query)
-    existing_slots = existing_result.scalars().all()
+    if existing_slots is None:
+        existing_query = select(Slot).where(
+            and_(Slot.doctor_id == doctor_id, Slot.date == target_date)
+        )
+        existing_result = await db.execute(existing_query)
+        existing_slots = existing_result.scalars().all()
     existing_times = {(s.date, s.start_time) for s in existing_slots}
 
     while current_time + slot_duration <= end_datetime:
@@ -87,8 +93,14 @@ async def generate_slots_for_date(db: AsyncSession, doctor_id: int, target_date:
     return slots_to_create
 
 
-async def get_or_generate_slots(db: AsyncSession, doctor_id: int, target_date: date) -> List[Slot]:
-    await cleanup_past_empty_slots(db)
+async def get_or_generate_slots(
+    db: AsyncSession,
+    doctor_id: int,
+    target_date: date,
+    run_cleanup: bool = False,
+) -> List[Slot]:
+    if run_cleanup:
+        await cleanup_past_empty_slots(db)
 
     query = select(Slot).where(
         and_(Slot.doctor_id == doctor_id, Slot.date == target_date)
@@ -98,7 +110,7 @@ async def get_or_generate_slots(db: AsyncSession, doctor_id: int, target_date: d
     slots = result.scalars().all()
 
     if not slots:
-        slots = await generate_slots_for_date(db, doctor_id, target_date)
+        slots = await generate_slots_for_date(db, doctor_id, target_date, existing_slots=slots)
 
     now = get_clinic_now()
     today = now.date()
@@ -210,6 +222,7 @@ async def block_slot_with_reassignment(
     db: AsyncSession,
     slot_id: int,
 ) -> Tuple[bool, List[Tuple[Booking, Slot, Optional[Slot]]]]:
+    await cleanup_past_empty_slots(db)
     slot_query = select(Slot).where(Slot.id == slot_id).options(selectinload(Slot.booking))
     result = await db.execute(slot_query)
     slot = result.scalar_one_or_none()
