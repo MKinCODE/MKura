@@ -192,11 +192,23 @@ class BookingAgentService:
             else:
                 res = {"response": "Please complete the payment to confirm your booking.", "session_id": agent.session_id, "stage": agent.stage.value}
         elif agent.stage == BookingStage.COMPLETE:
-            res = {
-                "response": "Your booking is already complete. If you need to cancel, please use the cancellation link in your confirmation email.",
-                "session_id": agent.session_id,
-                "stage": agent.stage.value,
-            }
+            intent = classify_intent(message)
+            if intent == "greeting" or any(word in message.lower() for word in ["new", "reset", "restart", "another", "book again", "clear"]):
+                agent.reset()
+                res = self._collect_information(agent, message)
+            else:
+                instruction = (
+                    "The user's booking is already complete. If they want to schedule another appointment, "
+                    "tell them to type 'new booking' or 'restart' to clear the session and start over. "
+                    "Otherwise, answer their message politely. Keep it brief."
+                )
+                response = self._get_groq_fallback(message, instruction)
+                agent.add_message("assistant", response)
+                res = {
+                    "response": response,
+                    "session_id": agent.session_id,
+                    "stage": agent.stage.value,
+                }
         else:
             res = self._collect_information(agent, message)
 
@@ -250,12 +262,22 @@ class BookingAgentService:
         # 4. Determine current stage and response based on what is missing
         if not has_name:
             agent.stage = BookingStage.NAME
-            instruction = (
-                "The user is booking an appointment but hasn't provided a valid full name. "
-                "Politely request their full name (e.g. John Doe). Do not ask for email or phone yet. "
-                "Keep the response brief."
-            )
-            response = self._get_groq_fallback(message, instruction)
+            intent = classify_intent(message)
+            if intent == "greeting" or not any(word in message.lower() for word in ["book", "appointment", "schedule", "reserve"]):
+                instruction = (
+                    "The user is greeting you or asking a general question about the clinic. "
+                    "Answer their question politely or greet them warmly. Let them know you can help them book an appointment when they are ready. "
+                    "Do not demand their name, email, or phone number yet. Keep the response brief. "
+                    f"Clinic Info: Name={settings.CLINIC_NAME}, Hours={settings.CLINIC_OPEN_HOUR}am-{settings.CLINIC_CLOSE_HOUR}pm, Location={settings.CLINIC_ADDRESS}, Phone={settings.CLINIC_PHONE}."
+                )
+                response = self._get_groq_fallback(message, instruction)
+            else:
+                instruction = (
+                    "The user is booking an appointment but hasn't provided a valid full name. "
+                    "Politely request their full name (e.g. John Doe). Do not ask for email or phone yet. "
+                    "Keep the response brief."
+                )
+                response = self._get_groq_fallback(message, instruction)
             
         elif not has_email:
             agent.stage = BookingStage.EMAIL

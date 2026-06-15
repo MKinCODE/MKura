@@ -37,7 +37,17 @@ def extract_name(text: str) -> Optional[str]:
         return None
     if '@' in text or any(char.isdigit() for char in text):
         return None
+        
+    blacklist = {
+        "hi", "hello", "hey", "bro", "yes", "no", "cancel", "ok", "okay", "sure", "yeah", "ya",
+        "doctor", "appointment", "schedule", "book", "consult", "consultation", "avail", "available",
+        "today", "tomorrow", "time", "date", "timings", "help", "please", "clinic", "assistant"
+    }
+    
     words = text.split()
+    if any(w.lower() in blacklist for w in words):
+        return None
+        
     if len(words) >= 1 and len(words) <= 4:
         return text.title()
     return None
@@ -92,7 +102,9 @@ def extract_entities_with_llm(text: str) -> dict:
         return {}
     try:
         system_prompt = (
-            "You are an entity extraction assistant. Extract the person's name, email, and phone number from the user's message. "
+            "You are a strict entity extraction assistant. Extract the user's personal details (name, email, phone) ONLY if they are explicitly and unambiguously provided in their message. "
+            "If the user is greeting you, asking a question (e.g. availability, timings), or not providing their own info, return null for those fields. "
+            "Do NOT extract words like 'doctor', 'bro', 'clinic', 'appointment' or general phrases as names. "
             "Respond ONLY with a JSON object containing keys: 'name', 'email', 'phone'. Use null if not found. "
             "Do not include any markdown, code blocks, or extra text. Example response:\n"
             '{"name": "John Doe", "email": "john@example.com", "phone": "9876543210"}'
