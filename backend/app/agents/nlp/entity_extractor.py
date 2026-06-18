@@ -41,7 +41,34 @@ def extract_name(text: str) -> Optional[str]:
     blacklist = {
         "hi", "hello", "hey", "bro", "yes", "no", "cancel", "ok", "okay", "sure", "yeah", "ya",
         "doctor", "appointment", "schedule", "book", "consult", "consultation", "avail", "available",
-        "today", "tomorrow", "time", "date", "timings", "help", "please", "clinic", "assistant"
+        "today", "tomorrow", "time", "date", "timings", "help", "please", "clinic", "assistant",
+        "general", "specialist", "check-up", "checkup", "cardiology", "pediatric", "orthopedics", 
+        "cardiologist", "physician", "physio", "therapy", "teeth", "dental", "dentist", "eye", 
+        "skin", "dermatology", "flu", "fever", "cough", "sick", "ill", "pain", "injury", "broken", 
+        "sprain", "vaccine", "vaccination", "check", "test", "report", "cleaning", "surgery", 
+        "operation", "filling", "root canal", "medical", "health", "booking", "first", "second", 
+        "third", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten",
+        "me", "my", "your", "his", "her", "their", "our", "us", "them", "i", "you", "he", "she", 
+        "they", "we", "who", "what", "where", "when", "why", "how", "want", "like", "need", "love", 
+        "prefer", "choose", "select", "have", "has", "had", "do", "does", "did", "go", "went", 
+        "gone", "come", "came", "run", "walk", "talk", "speak", "tell", "say", "said", "ask", 
+        "give", "take", "bring", "send", "receive", "get", "make", "made", "find", "found", "lose", 
+        "lost", "keep", "kept", "hold", "held", "show", "shown", "see", "saw", "seen", "look", 
+        "hear", "heard", "listen", "feel", "felt", "think", "thought", "know", "knew", "known", 
+        "understand", "understood", "remember", "forget", "forgot", "forgotten", "learn", "teach", 
+        "taught", "read", "write", "wrote", "written", "open", "close", "start", "stop", "begin", 
+        "end", "finish", "complete", "arrive", "leave", "left", "stay", "remain", "wait", "hope", 
+        "wish", "expect", "believe", "doubt", "fear", "worry", "care", "mind", "matter", "happen", 
+        "occur", "seem", "appear", "become", "became", "grow", "grew", "grown", "fall", "fell", 
+        "fallen", "rise", "rose", "risen", "raise", "raised", "set", "put", "lay", "laid", 
+        "lie", "sit", "sat", "stand", "stood", "good", "morning", "afternoon", "evening", "night", 
+        "day", "hola", "greetings", "dear", "friend", "buddy", "mate", "dude", "pal", "folks", 
+        "guys", "yep", "nah", "nope", "maybe", "perhaps", "definitely", "absolutely", "indeed", 
+        "correct", "right", "wrong", "false", "true", "halt", "abort", "reset", "restart", "clear", 
+        "delete", "remove", "change", "update", "modify", "edit", "fix", "repair", "support", 
+        "info", "information", "details", "contact", "about", "services", "pricing", "fees", 
+        "cost", "price", "insurance", "payment", "pay", "card", "cash", "upi", "netbanking", 
+        "wallet", "discount", "offer", "promo", "code", "coupon"
     }
     
     words = text.split()
@@ -104,7 +131,7 @@ def extract_entities_with_llm(text: str) -> dict:
         system_prompt = (
             "You are a strict entity extraction assistant. Extract the user's personal details (name, email, phone) ONLY if they are explicitly and unambiguously provided in their message. "
             "If the user is greeting you, asking a question (e.g. availability, timings), or not providing their own info, return null for those fields. "
-            "Do NOT extract words like 'doctor', 'bro', 'clinic', 'appointment' or general phrases as names. "
+            "Do NOT extract words like 'doctor', 'bro', 'clinic', 'appointment', 'general', 'specialist', 'consultation', 'check-up', 'checkup' or generic appointment types as names. "
             "Respond ONLY with a JSON object containing keys: 'name', 'email', 'phone'. Use null if not found. "
             "Do not include any markdown, code blocks, or extra text. Example response:\n"
             '{"name": "John Doe", "email": "john@example.com", "phone": "9876543210"}'

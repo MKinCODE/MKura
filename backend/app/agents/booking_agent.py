@@ -31,6 +31,7 @@ if settings.GROQ_API_KEY:
 
 class BookingStage(str, Enum):
     NAME = "name"
+    CONFIRM_NAME = "confirm_name"
     EMAIL = "email"
     PHONE = "phone"
     SLOT_SELECTION = "slot_selection"
@@ -184,6 +185,8 @@ class BookingAgentService:
 
         if agent.stage == BookingStage.SLOT_SELECTION:
             res = self._handle_slot_selection(agent, message)
+        elif agent.stage == BookingStage.CONFIRM_NAME:
+            res = self._handle_confirm_name(agent, message)
         elif agent.stage == BookingStage.WAITLIST_PROMPT:
             res = self._handle_waitlist_prompt(agent, message)
         elif agent.stage == BookingStage.PAYMENT:
@@ -226,15 +229,7 @@ class BookingAgentService:
         if groq_client:
             extracted = extract_entities_with_llm(message)
             
-        # 2. Update agent data from LLM extraction
-        if extracted.get("name") and not agent.data.name:
-            agent.data.name = extracted["name"].title()
-        if extracted.get("phone") and not agent.data.phone:
-            from .nlp import validate_phone
-            if validate_phone(extracted["phone"]):
-                agent.data.phone = extracted["phone"]
-
-        # 3. Fallback/Regex extraction for anything still missing
+        # 2. Extract email and phone (update agent data directly, since they don't need confirmation)
         raw_email = extracted.get("email") or extract_email(message)
         if raw_email and not agent.data.email:
             from .nlp import validate_email
@@ -244,15 +239,23 @@ class BookingAgentService:
             else:
                 agent.context["email_error"] = True
 
-        if not agent.data.phone:
-            phone = extract_phone(message)
-            if phone:
-                agent.data.phone = phone
+        raw_phone = extracted.get("phone") or extract_phone(message)
+        if raw_phone and not agent.data.phone:
+            from .nlp import validate_phone
+            if validate_phone(raw_phone):
+                agent.data.phone = raw_phone
 
-        if not agent.data.name:
-            name = extract_name_smart(message)
-            if name:
-                agent.data.name = name.title()
+        # 3. Extract name (and go to CONFIRM_NAME if we find a new name)
+        extracted_name = extracted.get("name")
+        if not extracted_name:
+            extracted_name = extract_name_smart(message)
+
+        if extracted_name and not agent.data.name:
+            agent.context["temp_name"] = extracted_name.title()
+            agent.stage = BookingStage.CONFIRM_NAME
+            response = f"Is '{agent.context['temp_name']}' your correct full name? Please reply YES or NO."
+            agent.add_message("assistant", response)
+            return {"response": response, "session_id": agent.session_id, "stage": agent.stage.value}
 
         # Track what we have now
         has_name = bool(agent.data.name)
@@ -266,7 +269,9 @@ class BookingAgentService:
             if intent == "greeting" or not any(word in message.lower() for word in ["book", "appointment", "schedule", "reserve"]):
                 instruction = (
                     "The user is greeting you or asking a general question about the clinic. "
-                    "Answer their question politely or greet them warmly. Let them know you can help them book an appointment when they are ready. "
+                    "Answer their question politely or greet them warmly. Let them know you can help them book an appointment with Dr. Mousam. "
+                    "Ask for their full name to get started with the booking. "
+                    "Do NOT ask what type of appointment they want, as we only schedule general consultations. "
                     "Do not demand their name, email, or phone number yet. Keep the response brief. "
                     f"Clinic Info: Name={settings.CLINIC_NAME}, Hours={settings.CLINIC_OPEN_HOUR}am-{settings.CLINIC_CLOSE_HOUR}pm, Location={settings.CLINIC_ADDRESS}, Phone={settings.CLINIC_PHONE}."
                 )
@@ -312,6 +317,47 @@ class BookingAgentService:
                 f"I'll now find the earliest available slot for you."
             )
             agent.context["search_slots"] = True
+
+        agent.add_message("assistant", response)
+        return {"response": response, "session_id": agent.session_id, "stage": agent.stage.value}
+
+    def _handle_confirm_name(self, agent: BookingAgent, message: str) -> Dict[str, Any]:
+        intent = classify_intent(message)
+        temp_name = agent.context.get("temp_name")
+
+        if not temp_name:
+            agent.stage = BookingStage.NAME
+            response = "Could you please tell me your full name?"
+            agent.add_message("assistant", response)
+            return {"response": response, "session_id": agent.session_id, "stage": agent.stage.value}
+
+        if intent == "confirm":
+            agent.data.name = temp_name
+            agent.context.pop("temp_name", None)
+            
+            has_email = bool(agent.data.email)
+            has_phone = bool(agent.data.phone)
+            
+            if not has_email:
+                agent.stage = BookingStage.EMAIL
+                response = f"Great! Could you please provide your email address so we can send you appointment confirmations?"
+            elif not has_phone:
+                agent.stage = BookingStage.PHONE
+                response = f"Got it, thanks! To keep you updated on your appointments and for any urgent notifications, could you please share your phone number?"
+            else:
+                agent.stage = BookingStage.SLOT_SELECTION
+                response = (
+                    f"PERFECT! I've recorded your details:\n👤 Name: {agent.data.name}\n✉️ Email: {agent.data.email}\n📞 Phone: {agent.data.phone}\n\n"
+                    f"I'll now find the earliest available slot for you."
+                )
+                agent.context["search_slots"] = True
+                
+        elif intent == "cancel":
+            agent.context.pop("temp_name", None)
+            agent.stage = BookingStage.NAME
+            response = "No problem! Could you please tell me your correct full name?"
+        else:
+            response = f"Please reply YES to confirm that your name is '{temp_name}', or NO if it is incorrect."
 
         agent.add_message("assistant", response)
         return {"response": response, "session_id": agent.session_id, "stage": agent.stage.value}
