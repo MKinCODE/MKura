@@ -1,9 +1,9 @@
 from datetime import datetime, date, time, timedelta
 from typing import List, Optional, Tuple
-from sqlalchemy import select, and_, or_, delete
+from sqlalchemy import select, and_, or_, delete, exists
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
-from ..models import Slot, Booking, WeeklySchedule, Doctor, SlotStatus, BookingStatus
+from ..models import Slot, Booking, WeeklySchedule, Doctor, SlotStatus, BookingStatus, Upgradation
 from ..core.config import settings
 
 
@@ -18,17 +18,24 @@ async def cleanup_past_empty_slots(db: AsyncSession):
     today = now.date()
     current_time = now.time()
 
+    booking_exists = exists().where(Booking.slot_id == Slot.id)
+    upgradation_exists = exists().where(Upgradation.slot_id == Slot.id)
+
     query_past_days = delete(Slot).where(
         and_(
             Slot.date < today,
-            Slot.status == SlotStatus.AVAILABLE
+            Slot.status == SlotStatus.AVAILABLE,
+            ~booking_exists,
+            ~upgradation_exists
         )
     )
     query_today_passed = delete(Slot).where(
         and_(
             Slot.date == today,
             Slot.start_time <= current_time,
-            Slot.status == SlotStatus.AVAILABLE
+            Slot.status == SlotStatus.AVAILABLE,
+            ~booking_exists,
+            ~upgradation_exists
         )
     )
 

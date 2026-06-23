@@ -124,9 +124,29 @@ def extract_name_smart(text: str) -> Optional[str]:
     return extract_name(text)
 
 
+def redact_sensitive_info(text: str) -> str:
+    if not text:
+        return text
+    # Redact email
+    email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+    redacted = re.sub(email_pattern, "[EMAIL]", text)
+    
+    # Redact phone numbers (looks for 10-15 digits, handles common format punctuation)
+    phone_pattern = r'\b(?:\+?\d{1,3}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{3,4}\b'
+    redacted = re.sub(phone_pattern, "[PHONE]", redacted)
+    # Redact simple sequences of 10 to 15 digits
+    redacted = re.sub(r'\b\d{10,15}\b', "[PHONE]", redacted)
+    
+    return redacted
+
+
 def extract_entities_with_llm(text: str) -> dict:
     if not groq_client:
         return {}
+    
+    # Redact sensitive data from the message before passing to Groq
+    text = redact_sensitive_info(text)
+    
     try:
         system_prompt = (
             "You are a strict entity extraction assistant. Extract the user's personal details (name, email, phone) ONLY if they are explicitly and unambiguously provided in their message. "

@@ -14,6 +14,7 @@ from .nlp import (
     ConfirmationIntent,
     extract_name_smart,
     extract_entities_with_llm,
+    redact_sensitive_info,
 )
 from app.core.config import settings
 
@@ -27,6 +28,16 @@ if settings.GROQ_API_KEY:
         logger.info("Groq client initialized successfully")
     except Exception as e:
         logger.warning(f"Failed to initialize Groq client: {e}")
+
+
+def redact_messages(messages: List[Dict[str, str]]) -> List[Dict[str, str]]:
+    redacted = []
+    for msg in messages:
+        redacted.append({
+            "role": msg["role"],
+            "content": redact_sensitive_info(msg["content"])
+        })
+    return redacted
 
 
 class BookingStage(str, Enum):
@@ -205,7 +216,7 @@ class BookingAgentService:
                     "tell them to type 'new booking' or 'restart' to clear the session and start over. "
                     "Otherwise, answer their message politely. Keep it brief."
                 )
-                response = self._get_groq_fallback(message, instruction)
+                response = self._get_groq_fallback(message, instruction, agent)
                 agent.add_message("assistant", response)
                 res = {
                     "response": response,
@@ -229,8 +240,12 @@ class BookingAgentService:
         if groq_client:
             extracted = extract_entities_with_llm(message)
             
-        # 2. Extract email and phone (update agent data directly, since they don't need confirmation)
-        raw_email = extracted.get("email") or extract_email(message)
+        # 2. Extract email and phone locally
+        local_email = extract_email(message)
+        local_phone = extract_phone(message)
+
+        # 3. Handle email extraction and validation
+        raw_email = local_email
         if raw_email and not agent.data.email:
             from .nlp import validate_email
             if validate_email(raw_email):
@@ -238,16 +253,28 @@ class BookingAgentService:
                 agent.context.pop("email_error", None)
             else:
                 agent.context["email_error"] = True
+        elif not agent.data.email and "@" in message:
+            # User typed something with @ but it's not a valid email format
+            agent.context["email_error"] = True
 
-        raw_phone = extracted.get("phone") or extract_phone(message)
+        # 4. Handle phone extraction and validation
+        raw_phone = local_phone
         if raw_phone and not agent.data.phone:
             from .nlp import validate_phone
             if validate_phone(raw_phone):
                 agent.data.phone = raw_phone
+                agent.context.pop("phone_error", None)
+            else:
+                agent.context["phone_error"] = True
+        elif not agent.data.phone:
+            import re
+            digits_only = re.sub(r'\D', '', message)
+            if len(digits_only) >= 5:
+                agent.context["phone_error"] = True
 
-        # 3. Extract name (and go to CONFIRM_NAME if we find a new name)
+        # 5. Extract name (only fall back to extract_name_smart if LLM is NOT active)
         extracted_name = extracted.get("name")
-        if not extracted_name:
+        if not extracted_name and not groq_client:
             extracted_name = extract_name_smart(message)
 
         if extracted_name and not agent.data.name:
@@ -275,31 +302,40 @@ class BookingAgentService:
                     "Do not demand their name, email, or phone number yet. Keep the response brief. "
                     f"Clinic Info: Name={settings.CLINIC_NAME}, Hours={settings.CLINIC_OPEN_HOUR}am-{settings.CLINIC_CLOSE_HOUR}pm, Location={settings.CLINIC_ADDRESS}, Phone={settings.CLINIC_PHONE}."
                 )
-                response = self._get_groq_fallback(message, instruction)
+                response = self._get_groq_fallback(message, instruction, agent)
             else:
                 instruction = (
                     "The user is booking an appointment but hasn't provided a valid full name. "
                     "Politely request their full name (e.g. John Doe). Do not ask for email or phone yet. "
                     "Keep the response brief."
                 )
-                response = self._get_groq_fallback(message, instruction)
+                response = self._get_groq_fallback(message, instruction, agent)
             
         elif not has_email:
             agent.stage = BookingStage.EMAIL
             if agent.context.get("email_error"):
                 response = "I'm sorry, but that email address could not be verified (invalid format or unreachable domain). Please enter a valid, active email address."
                 agent.context.pop("email_error", None)
-            elif not had_name:
+                agent.add_message("assistant", response)
+                return {"response": response, "session_id": agent.session_id, "stage": agent.stage.value}
+            
+            if not had_name:
                 response = f"Thank you, {agent.data.name}! Could you please provide your email address so we can send you appointment confirmations?"
             else:
                 instruction = (
                     f"The user's name is {agent.data.name}. Politely ask them to provide their email address "
                     f"so we can send appointment confirmations. Do not ask for name or phone. Keep the response brief."
                 )
-                response = self._get_groq_fallback(message, instruction)
+                response = self._get_groq_fallback(message, instruction, agent)
             
         elif not has_phone:
             agent.stage = BookingStage.PHONE
+            if agent.context.get("phone_error"):
+                response = "I'm sorry, but that phone number appears to be invalid. Please enter a valid 10 to 15 digit phone number (e.g., 9876543210)."
+                agent.context.pop("phone_error", None)
+                agent.add_message("assistant", response)
+                return {"response": response, "session_id": agent.session_id, "stage": agent.stage.value}
+
             if not had_email or not had_name:
                 response = f"Got it, thanks! To keep you updated on your appointments and for any urgent notifications, could you please share your phone number?"
             else:
@@ -307,7 +343,7 @@ class BookingAgentService:
                     f"The user has provided their name ({agent.data.name}) and email ({agent.data.email}). "
                     f"Politely ask them for their phone number for urgent notifications. Do not ask for name or email. Keep it brief."
                 )
-                response = self._get_groq_fallback(message, instruction)
+                response = self._get_groq_fallback(message, instruction, agent)
             
         else:
             # Everything is gathered! Move to slot selection.
@@ -362,7 +398,7 @@ class BookingAgentService:
         agent.add_message("assistant", response)
         return {"response": response, "session_id": agent.session_id, "stage": agent.stage.value}
 
-    def _get_groq_fallback(self, user_message: str, instruction: str) -> str:
+    def _get_groq_fallback(self, user_message: str, instruction: str, agent: Optional[BookingAgent] = None) -> str:
         is_name_stage = "request their full name" in instruction or "ask them for their name" in instruction
         is_email_stage = "provide their email" in instruction or "ask them for their email" in instruction
         is_phone_stage = "phone number" in instruction
@@ -382,13 +418,21 @@ class BookingAgentService:
                 f"{instruction} "
                 "Be concise, polite, and guide the user to provide the required information."
             )
+            
+            # Construct messages with history
+            messages = [{"role": "system", "content": system_prompt}]
+            if agent and agent.messages:
+                # Get redacted history excluding the current user message which we will append next
+                redacted_history = redact_messages(agent.messages[:-1])
+                messages.extend(redacted_history)
+                
+            # Append the current user message, redacted for privacy
+            messages.append({"role": "user", "content": redact_sensitive_info(user_message)})
+            
             response = groq_client.chat.completions.create(
                 model="llama-3.3-70b-versatile",
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_message}
-                ],
-                max_tokens=100,
+                messages=messages,
+                max_tokens=150,
                 temperature=0.7
             )
             return response.choices[0].message.content

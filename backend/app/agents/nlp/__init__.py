@@ -6,6 +6,7 @@ from .entity_extractor import (
     validate_phone,
     extract_name_smart,
     extract_entities_with_llm,
+    redact_sensitive_info,
 )
 from .intent_classifier import classify_intent, ConfirmationIntent
 
@@ -17,6 +18,7 @@ __all__ = [
     "validate_phone",
     "extract_name_smart",
     "extract_entities_with_llm",
+    "redact_sensitive_info",
     "classify_intent",
     "ConfirmationIntent",
 ]
