@@ -218,12 +218,6 @@ On Render's CPU-throttled containers, running database operations inside loops c
 
 ---
 
-## 🩺 Demo Credentials & Interactive Docs
-*   **Doctor Dashboard Login**: Email `mousam1234@mkhealth.com` and password `doctor123`.
-*   **FastAPI Swagger UI Docs**: Available at `http://localhost:8000/docs`.
-*   **Alternative Redoc Portal**: Available at `http://localhost:8000/redoc`.
-
----
 
 ## ⚖️ License
 Distributed under the **MIT License**. Feel free to use this system to showcase multi-agent orchestration, clean coding architectures, or modern responsive web interfaces in your portfolios!
