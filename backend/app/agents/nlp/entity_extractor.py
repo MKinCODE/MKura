@@ -131,12 +131,16 @@ def redact_sensitive_info(text: str) -> str:
     email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
     redacted = re.sub(email_pattern, "[EMAIL]", text)
     
-    # Redact phone numbers (looks for 10-15 digits, handles common format punctuation)
-    phone_pattern = r'\b(?:\+?\d{1,3}[-.\s]?)?\(?\d{2,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{3,4}\b'
-    redacted = re.sub(phone_pattern, "[PHONE]", redacted)
-    # Redact simple sequences of 10 to 15 digits
-    redacted = re.sub(r'\b\d{10,15}\b', "[PHONE]", redacted)
-    
+    # Phone patterns to match various international/local structures
+    phone_patterns = [
+        r'\+?\d{1,3}[-.\s]?\d{5}[-.\s]?\d{5}\b',
+        r'\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}\b',
+        r'\b\d{5}[-.\s]?\d{5}\b',
+        r'\b\d{10,15}\b'
+    ]
+    for pattern in phone_patterns:
+        redacted = re.sub(pattern, "[PHONE]", redacted)
+        
     return redacted
 
 
