@@ -14,6 +14,8 @@ def get_clinic_now() -> datetime:
 
 
 async def cleanup_past_empty_slots(db: AsyncSession):
+    from ..models import Slot, Booking, Upgradation, SlotStatus
+    from sqlalchemy import exists
     now = get_clinic_now()
     today = now.date()
     current_time = now.time()
@@ -39,12 +41,8 @@ async def cleanup_past_empty_slots(db: AsyncSession):
         )
     )
 
-    try:
-        await db.execute(query_past_days)
-        await db.execute(query_today_passed)
-        await db.commit()
-    except Exception as e:
-        await db.rollback()
+    await db.execute(query_past_days)
+    await db.execute(query_today_passed)
 
 
 async def generate_slots_for_date(
@@ -107,7 +105,7 @@ async def get_or_generate_slots(
     run_cleanup: bool = False,
 ) -> List[Slot]:
     if run_cleanup:
-        await cleanup_past_empty_slots(db)
+        pass
 
     query = select(Slot).where(
         and_(Slot.doctor_id == doctor_id, Slot.date == target_date)
@@ -137,8 +135,6 @@ async def find_earliest_available_slot(
     doctor_id: Optional[int] = None,
     min_lead_time_minutes: int = 60,
 ) -> Optional[Slot]:
-    await cleanup_past_empty_slots(db)
-
     now = get_clinic_now()
     min_booking_time = now + timedelta(minutes=min_lead_time_minutes)
 
@@ -229,7 +225,6 @@ async def block_slot_with_reassignment(
     db: AsyncSession,
     slot_id: int,
 ) -> Tuple[bool, List[Tuple[Booking, Slot, Optional[Slot]]]]:
-    await cleanup_past_empty_slots(db)
     slot_query = select(Slot).where(Slot.id == slot_id).options(selectinload(Slot.booking))
     result = await db.execute(slot_query)
     slot = result.scalar_one_or_none()

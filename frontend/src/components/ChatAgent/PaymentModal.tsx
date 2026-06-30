@@ -127,7 +127,7 @@ export function PaymentModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-4 bg-black/50 chat-backdrop">
+    <div className="fixed inset-0 z-[100] flex items-start sm:items-center justify-center p-0 sm:p-4 bg-black/50 chat-backdrop overflow-y-auto">
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -139,7 +139,7 @@ export function PaymentModal({
       <motion.div
         initial={{ opacity: 0, scale: 0.98 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="relative bg-white w-full max-w-2xl sm:max-w-3xl min-h-[500px] shadow-2xl border border-slate-200 overflow-hidden flex flex-col md:flex-row rounded-none sm:rounded-md"
+        className="relative bg-white w-full max-w-2xl sm:max-w-3xl my-0 sm:my-auto h-auto md:min-h-[500px] shadow-2xl border border-slate-200 overflow-hidden flex flex-col md:flex-row rounded-none sm:rounded-md"
         style={{ fontFamily: "'Inter', sans-serif" }}
       >
         <AnimatePresence mode="wait">

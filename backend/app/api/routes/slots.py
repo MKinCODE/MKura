@@ -21,9 +21,7 @@ async def get_available_slots(
     target_date: Optional[date] = None,
     db: AsyncSession = Depends(get_db),
 ):
-    from app.services.slot_service import get_clinic_now, cleanup_past_empty_slots
-    await cleanup_past_empty_slots(db)
-
+    from app.services.slot_service import get_clinic_now
     now = get_clinic_now()
     today = now.date()
 

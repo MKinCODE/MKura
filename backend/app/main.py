@@ -10,6 +10,17 @@ from .api.routes import auth_router, bookings_router, slots_router, chat_router
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_db()
+    # Clean up past AVAILABLE slots from database on startup
+    try:
+        from .database import async_session_maker
+        from .services.slot_service import cleanup_past_empty_slots
+        async with async_session_maker() as db:
+            await cleanup_past_empty_slots(db)
+            await db.commit()
+        print("Database cleanup completed successfully on startup!")
+    except Exception as e:
+        print(f"Startup database cleanup failed: {e}")
+
     # Automatically seed the doctor credentials, weekly schedules, and rolling slots on startup
     try:
         from .seed_data import seed_all

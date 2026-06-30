@@ -201,10 +201,21 @@ class BookingAgentService:
         elif agent.stage == BookingStage.WAITLIST_PROMPT:
             res = self._handle_waitlist_prompt(agent, message)
         elif agent.stage == BookingStage.PAYMENT:
-            if payment_status == "success" or message.lower() == "payment_success":
+            if any(word in message.lower() for word in ["new", "reset", "restart", "another", "book again", "clear", "cancel"]):
+                agent.reset()
+                res = self._collect_information(agent, message)
+            elif payment_status == "success" or message.lower() == "payment_success":
                 res = self._handle_payment_success(agent)
             else:
-                res = {"response": "Please complete the payment to confirm your booking.", "session_id": agent.session_id, "stage": agent.stage.value}
+                response = (
+                    "Please complete the payment to confirm your booking.\n\n"
+                    "⚠️ *Note: If you accidentally closed the payment window, please type 'restart' or 'new' to start a new booking session, as closed payment sessions cannot be resumed.*"
+                )
+                res = {
+                    "response": response,
+                    "session_id": agent.session_id,
+                    "stage": agent.stage.value
+                }
         elif agent.stage == BookingStage.COMPLETE:
             intent = classify_intent(message)
             if intent == "greeting" or any(word in message.lower() for word in ["new", "reset", "restart", "another", "book again", "clear"]):
