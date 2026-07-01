@@ -160,7 +160,7 @@ class BookingAgentService:
                 )
                 db.add(db_session)
                 
-            await db.commit()
+            await db.flush()
         except Exception as e:
             logger.error(f"Error saving session {agent.session_id} to DB: {e}")
 

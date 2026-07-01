@@ -41,41 +41,54 @@ async def chat_message(
     response_text = response_data.get("response", "")
 
     if response_data.get("stage") == "slot_selection" and response_data.get("session_id"):
-        agent = await booking_agent_service.get_or_create_session_async(db, response_data["session_id"])
-        agent.stage = BookingStage.SLOT_SELECTION
+        try:
+            agent = await booking_agent_service.get_or_create_session_async(db, response_data["session_id"])
+            agent.stage = BookingStage.SLOT_SELECTION
 
-        slot = await find_earliest_available_slot(db)
+            slot = await find_earliest_available_slot(db)
 
-        if slot:
-            await db.refresh(slot, ["doctor"])
-            slot_date = slot.date.strftime("%A, %d %B %Y")
-            slot_time = slot.start_time.strftime("%I:%M %p")
+            if slot:
+                await db.refresh(slot, ["doctor"])
+                slot_date = slot.date.strftime("%A, %d %B %Y")
+                slot_time = slot.start_time.strftime("%I:%M %p")
 
-            slot_info = {
-                "id": slot.id,
-                "doctor_name": slot.doctor.name,
-                "specialization": slot.doctor.specialization,
-                "date": slot_date,
-                "time": slot_time,
-            }
+                slot_info = {
+                    "id": slot.id,
+                    "doctor_name": slot.doctor.name,
+                    "specialization": slot.doctor.specialization,
+                    "date": slot_date,
+                    "time": slot_time,
+                }
 
-            response_text = (
-                f"I found the earliest available slot:\n\n"
-                f"📅 {slot_date}\n"
-                f"⏰ {slot_time}\n"
-                f"👨‍⚕️ {slot.doctor.name} ({slot.doctor.specialization})\n\n"
-                f"Type YES to confirm or CANCEL to cancel."
-            )
+                response_text = (
+                    f"I found the earliest available slot:\n\n"
+                    f"📅 {slot_date}\n"
+                    f"⏰ {slot_time}\n"
+                    f"👨‍⚕️ {slot.doctor.name} ({slot.doctor.specialization})\n\n"
+                    f"Type YES to confirm or CANCEL to cancel."
+                )
 
-            booking_agent_service.set_slot_info(agent, slot_info)
-            await booking_agent_service.save_session_to_db(db, agent)
+                booking_agent_service.set_slot_info(agent, slot_info)
+                await booking_agent_service.save_session_to_db(db, agent)
 
-            return ChatResponse(
-                response=response_text,
-                session_id=agent.session_id,
-                action="show_slot",
-                data=slot_info,
-            )
+                # Single commit for all slot generation + session save operations
+                await db.commit()
+
+                return ChatResponse(
+                    response=response_text,
+                    session_id=agent.session_id,
+                    action="show_slot",
+                    data=slot_info,
+                )
+            else:
+                # No slots found — commit any pending flushes and return informational message
+                await db.commit()
+                response_text = "I'm sorry, there are no available slots at this time. Please try again later."
+        except Exception as e:
+            await db.rollback()
+            import logging
+            logging.getLogger(__name__).error(f"Error finding slot: {e}", exc_info=True)
+            response_text = "I'm sorry, I had trouble finding available slots. Please try again."
 
     if response_data.get("action") == "redirect_payment" and response_data.get("session_id"):
         agent = await booking_agent_service.get_or_create_session_async(db, response_data["session_id"])
@@ -133,6 +146,9 @@ async def chat_message(
                         action="redirect_payment",
                         data=response_data.get("data"),
                     )
+
+    # Commit any pending flushes from save_session_to_db or slot operations
+    await db.commit()
 
     return ChatResponse(
         response=response_text,

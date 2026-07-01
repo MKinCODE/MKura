@@ -93,7 +93,7 @@ async def generate_slots_for_date(
 
     if slots_to_create:
         db.add_all(slots_to_create)
-        await db.commit()
+        await db.flush()
 
     return slots_to_create
 
@@ -210,13 +210,9 @@ async def find_earliest_available_slot(
             status=SlotStatus.AVAILABLE,
         )
         db.add(new_slot)
-        try:
-            await db.commit()
-            await db.refresh(new_slot, ["doctor"])
-            return new_slot
-        except Exception as e:
-            await db.rollback()
-            return None
+        await db.flush()
+        await db.refresh(new_slot, ["doctor"])
+        return new_slot
 
     return None
 
